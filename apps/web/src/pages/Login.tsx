@@ -3,6 +3,7 @@ import { useMsal } from "@azure/msal-react";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { useAuth } from "../context/AuthContext";
 import { useSso } from "../context/SsoContext";
 import { api, baseURL } from "../lib/api";
@@ -45,8 +46,7 @@ function MicrosoftSignInButton({
     <>
       <button
         type="button"
-        className="flex w-full items-center justify-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-white shadow-sm transition enabled:hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
-        style={{ backgroundColor: "#2F2F2F" }}
+        className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700/80"
         onClick={onMicrosoft}
         disabled={msLoading || !configReady || configError}
       >
@@ -122,13 +122,20 @@ export function LoginPage() {
   const configReady = Boolean(localConfig);
 
   return (
-    <div className="flex min-h-full items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg ring-1 ring-slate-200/80">
-        <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900">Sign in</h1>
-        <p className="mt-2 text-center text-sm text-slate-600">Manifest</p>
+    <div className="relative flex min-h-full items-center justify-center px-4 py-12">
+      <div className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">
+        <ThemeToggle />
+      </div>
+      <div className="card-surface w-full max-w-md p-8 sm:p-10">
+        <h1 className="text-center text-3xl font-medium tracking-tight text-slate-800 dark:text-slate-100">
+          Sign in
+        </h1>
+        <p className="mt-3 text-center text-lg text-brand">Manifest</p>
 
         {configError && (
-          <p className="mt-6 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{configError}</p>
+          <p className="mt-6 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">
+            {configError}
+          </p>
         )}
 
         <div className="mt-8 space-y-6">
@@ -138,10 +145,12 @@ export function LoginPage() {
 
               <div className="relative">
                 <div aria-hidden className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-slate-200" />
+                  <span className="w-full border-t border-slate-200 dark:border-slate-600" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-3 text-slate-500">or continue with email</span>
+                  <span className="bg-inherit px-3 text-slate-500 dark:text-slate-400">
+                    or continue with email
+                  </span>
                 </div>
               </div>
             </>
@@ -149,7 +158,7 @@ export function LoginPage() {
 
           <form className="space-y-4" onSubmit={onSubmit} noValidate>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700">
+              <label htmlFor="email" className="block text-base font-medium text-slate-600 dark:text-slate-300">
                 Email
               </label>
               <input
@@ -160,14 +169,14 @@ export function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={submitting}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm outline-none ring-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-300 disabled:bg-slate-50"
+                className="input-field mt-1 block"
               />
               {fieldErrors.email && (
                 <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
               )}
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+              <label htmlFor="password" className="block text-base font-medium text-slate-600 dark:text-slate-300">
                 Password
               </label>
               <input
@@ -178,7 +187,7 @@ export function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={submitting}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm outline-none ring-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-300 disabled:bg-slate-50"
+                className="input-field mt-1 block"
               />
               {fieldErrors.password && (
                 <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
@@ -186,13 +195,15 @@ export function LoginPage() {
             </div>
 
             {formError && (
-              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>
+              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">
+                {formError}
+              </p>
             )}
 
             <button
               type="submit"
               disabled={submitting || Boolean(configError)}
-              className="w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-primary w-full"
             >
               {submitting ? "Signing in…" : "Sign in"}
             </button>

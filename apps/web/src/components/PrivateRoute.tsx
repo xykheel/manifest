@@ -7,7 +7,9 @@ export function PrivateRoute() {
 
   if (!hydrationDone) {
     return (
-      <div className="flex min-h-full items-center justify-center text-slate-600">Loading…</div>
+      <div className="flex min-h-full items-center justify-center text-slate-500 dark:text-slate-400">
+        Loading…
+      </div>
     );
   }
 

@@ -56,6 +56,7 @@ services:
         pnpm --filter @manifest/shared build
         pnpm --filter @manifest/api exec prisma generate
         cd /app/apps/api && pnpm exec prisma migrate deploy
+        cd /app/apps/api && pnpm exec prisma db seed
         cd /app
         exec pnpm --filter @manifest/api dev
 
