@@ -3,14 +3,21 @@ import type { SsoConfigResponse } from "@manifest/shared";
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { AdminRoute } from "./components/AdminRoute";
+import { AuthenticatedLayout } from "./components/AuthenticatedLayout";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { AuthProvider } from "./context/AuthContext";
 import { SsoProvider } from "./context/SsoContext";
 import { baseURL } from "./lib/api";
 import { createMsalInstance } from "./lib/msal";
 import { AuthCallbackPage } from "./pages/AuthCallback";
+import { AdminOnboardingProgramsPage } from "./pages/admin/AdminOnboardingProgramsPage";
+import { AdminProgramEditorPage } from "./pages/admin/AdminProgramEditorPage";
+import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { DashboardPage } from "./pages/Dashboard";
 import { LoginPage } from "./pages/Login";
+import { OnboardingListPage } from "./pages/onboarding/OnboardingListPage";
+import { OnboardingPlayerPage } from "./pages/onboarding/OnboardingPlayerPage";
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const [config, setConfig] = useState<SsoConfigResponse | null>(null);
@@ -37,7 +44,9 @@ function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!config) {
     return (
-      <div className="flex min-h-full items-center justify-center text-slate-600">Loading…</div>
+      <div className="flex min-h-full items-center justify-center text-slate-500 dark:text-slate-400">
+        Loading…
+      </div>
     );
   }
 
@@ -68,7 +77,16 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route element={<PrivateRoute />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route element={<AuthenticatedLayout />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/onboarding" element={<OnboardingListPage />} />
+              <Route path="/onboarding/:programId" element={<OnboardingPlayerPage />} />
+              <Route element={<AdminRoute />}>
+                <Route path="/admin/users" element={<AdminUsersPage />} />
+                <Route path="/admin/onboarding" element={<AdminOnboardingProgramsPage />} />
+                <Route path="/admin/onboarding/:programId" element={<AdminProgramEditorPage />} />
+              </Route>
+            </Route>
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

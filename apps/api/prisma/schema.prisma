@@ -26,4 +26,75 @@ model User {
   entraId      String?       @unique
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+
+  onboardingEnrollments UserOnboardingEnrollment[]
+}
+
+enum OnboardingStepKind {
+  LESSON
+  QUIZ
+}
+
+enum OnboardingEnrollmentStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+model OnboardingProgram {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  steps       OnboardingStep[]
+  enrollments UserOnboardingEnrollment[]
+}
+
+model OnboardingStep {
+  id            String             @id @default(uuid()) @db.Uuid
+  programId     String             @db.Uuid
+  program       OnboardingProgram  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  sortOrder     Int
+  kind          OnboardingStepKind
+  title         String
+  lessonContent String?
+  quizQuestions QuizQuestion[]
+
+  @@unique([programId, sortOrder])
+}
+
+model QuizQuestion {
+  id        String         @id @default(uuid()) @db.Uuid
+  stepId    String         @db.Uuid
+  step      OnboardingStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  sortOrder Int
+  prompt    String
+  options   QuizOption[]
+}
+
+model QuizOption {
+  id         String       @id @default(uuid()) @db.Uuid
+  questionId String       @db.Uuid
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  sortOrder  Int
+  label      String
+  isCorrect  Boolean      @default(false)
+}
+
+model UserOnboardingEnrollment {
+  id               String                       @id @default(uuid()) @db.Uuid
+  userId           String                       @db.Uuid
+  user             User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programId        String                       @db.Uuid
+  program          OnboardingProgram            @relation(fields: [programId], references: [id], onDelete: Cascade)
+  status           OnboardingEnrollmentStatus   @default(IN_PROGRESS)
+  currentStepIndex Int                          @default(0)
+  startedAt        DateTime                     @default(now())
+  completedAt      DateTime?
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
+
+  @@unique([userId, programId])
 }

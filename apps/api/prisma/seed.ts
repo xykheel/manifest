@@ -16,10 +16,8 @@ async function main() {
       role: "ADMIN",
       authProvider: "LOCAL",
     },
-    update: {
-      passwordHash,
-      role: "ADMIN",
-    },
+    // Do not reset password on every seed (e.g. Docker restart)
+    update: { role: "ADMIN" },
   });
 
   const userPass = await hash("User123!", 12);
@@ -31,9 +29,7 @@ async function main() {
       role: "USER",
       authProvider: "LOCAL",
     },
-    update: {
-      passwordHash: userPass,
-    },
+    update: { role: "USER" },
   });
 
   console.log("Seeded admin@example.com / Admin123! and user@example.com / User123!");

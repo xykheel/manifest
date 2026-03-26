@@ -2,12 +2,82 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Type scale tuned for large displays; Inter (see index.html) */
+html {
+  font-size: 16px;
+  color-scheme: light;
+  min-height: 100dvh;
+  @apply bg-transparent;
+}
+html.dark {
+  color-scheme: dark;
+  @apply bg-slate-950;
+}
+@media (min-width: 1536px) {
+  html {
+    font-size: 17px;
+  }
+}
+@media (min-width: 1920px) {
+  html {
+    font-size: 18px;
+  }
+}
+
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100dvh;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply font-sans text-slate-800 antialiased;
+  @apply bg-gradient-to-b from-slate-50 via-[#eef2f4] to-[#e4e8ec];
+  text-rendering: optimizeLegibility;
+}
+
+html.dark body {
+  @apply bg-slate-950 text-slate-100;
+  background-image: none;
+}
+
+#root {
+  @apply bg-transparent;
+}
+
+html.dark #root {
+  @apply bg-slate-950;
+}
+
+@layer components {
+  .btn-primary {
+    @apply rounded-2xl bg-brand px-5 py-3 text-base font-semibold tracking-wide text-white shadow-md shadow-brand/25 transition hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary-sm {
+    @apply rounded-xl bg-brand px-4 py-2 text-base font-semibold text-white shadow-sm transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-secondary {
+    @apply rounded-2xl border border-slate-300/80 bg-white px-4 py-2 text-base font-medium text-slate-700 shadow-sm transition hover:border-brand/35 hover:bg-brand-light/40 dark:border-slate-600/80 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-brand/45 dark:hover:bg-slate-700/60;
+  }
+  .card-surface {
+    @apply rounded-2xl border border-slate-200/80 bg-white/90 shadow-card backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900 dark:shadow-[0_1px_2px_rgba(0,0,0,0.2),0_12px_40px_-14px_rgba(0,0,0,0.35)];
+  }
+  .input-field {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-base text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-slate-50/80 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-brand/30 dark:disabled:bg-slate-900/60;
+  }
+  .link-brand {
+    @apply text-base font-medium text-brand transition hover:text-brand-hover;
+  }
+  /**
+   * Completion / success — muted, low-chroma (avoids “neon” green on OLED next to teal UI)
+   */
+  .badge-complete {
+    @apply inline-flex items-center rounded-full border border-slate-400/40 bg-slate-200/50 px-3 py-1 text-sm font-medium text-slate-700 dark:border-slate-500/50 dark:bg-slate-700/50 dark:text-slate-200;
+  }
+  .badge-in-progress {
+    @apply inline-flex items-center rounded-full border border-brand/25 bg-brand-light/80 px-3 py-1 text-sm font-medium text-brand-hover dark:border-brand/40 dark:bg-brand/20 dark:text-slate-100;
+  }
+  .badge-draft {
+    @apply inline-flex items-center rounded-full border border-slate-300/60 bg-slate-100/90 px-3 py-1 text-sm font-medium text-slate-600 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-300;
+  }
 }

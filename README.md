@@ -59,7 +59,7 @@ Detached mode:
 docker compose up --build -d
 ```
 
-- The API container runs `prisma migrate deploy` on startup, then starts the dev server with hot reload.  
+- The API container runs `prisma migrate deploy` and `prisma db seed` on startup, then starts the dev server with hot reload.  
 - Source is bind-mounted into `api` and `web`; on each start the containers run `pnpm install` (and shared build / `prisma generate` for the API) so `node_modules` stays usable with the anonymous volume pattern.  
 - After changing dependencies, rebuild or restart the services so installs run again.  
 

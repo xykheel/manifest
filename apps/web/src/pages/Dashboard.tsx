@@ -1,53 +1,80 @@
 import { UserRole } from "@manifest/shared";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export function DashboardPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   if (!user) return null;
 
   const isAdmin = user.role === UserRole.ADMIN;
 
   return (
-    <div className="min-h-full">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-          <h1 className="text-lg font-semibold text-slate-900">Dashboard</h1>
-          <button
-            type="button"
-            onClick={() => void logout()}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-50"
-          >
-            Log out
-          </button>
-        </div>
-      </header>
-
+    <div className="min-h-0 flex-1 bg-transparent dark:bg-slate-950">
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
-        <section className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-slate-500">Account</h2>
-          <dl className="mt-4 space-y-2 text-sm">
+        <h1 className="text-md-headline font-medium tracking-tight text-slate-800 dark:text-slate-100 md:text-[2.125rem] md:leading-[2.75rem]">
+          Dashboard
+        </h1>
+        <p className="-mt-1 text-lg leading-relaxed text-slate-600 dark:text-slate-300">
+          Use the bar above to open{" "}
+          <Link to="/onboarding" className="link-brand">
+            onboarding
+          </Link>
+          {isAdmin && (
+            <>
+              {", "}
+              <Link to="/admin/users" className="link-brand">
+                user management
+              </Link>
+              {", or the "}
+              <Link to="/admin/onboarding" className="link-brand">
+                onboarding builder
+              </Link>
+            </>
+          )}
+          .
+        </p>
+
+        <section className="card-surface p-6 sm:p-8">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Account
+          </h2>
+          <dl className="mt-4 space-y-3 text-base">
             <div className="flex gap-2">
-              <dt className="w-28 shrink-0 text-slate-500">Email</dt>
-              <dd className="font-medium text-slate-900">{user.email}</dd>
+              <dt className="w-28 shrink-0 text-slate-500 dark:text-slate-400">Email</dt>
+              <dd className="font-medium text-slate-800 dark:text-slate-100">{user.email}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="w-28 shrink-0 text-slate-500">Role</dt>
-              <dd className="font-medium text-slate-900">{user.role}</dd>
+              <dt className="w-28 shrink-0 text-slate-500 dark:text-slate-400">Role</dt>
+              <dd className="font-medium text-slate-800 dark:text-slate-100">{user.role}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="w-28 shrink-0 text-slate-500">Auth</dt>
-              <dd className="font-medium text-slate-900">{user.authProvider}</dd>
+              <dt className="w-28 shrink-0 text-slate-500 dark:text-slate-400">Auth</dt>
+              <dd className="font-medium text-slate-800 dark:text-slate-100">{user.authProvider}</dd>
             </div>
           </dl>
         </section>
 
         {isAdmin && (
-          <section className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-6">
-            <h2 className="text-base font-semibold text-indigo-950">Admin panel</h2>
-            <p className="mt-2 text-sm text-indigo-900/90">
-              You have administrator access. Extend this section with Manifest administration tools.
+          <section className="rounded-2xl border border-brand/20 bg-gradient-to-br from-brand-light/80 to-brand-soft/40 p-6 sm:p-8 dark:border-brand/40 dark:bg-slate-900 dark:[background-image:none]">
+            <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">Admin</h2>
+            <p className="mt-2 text-lg leading-relaxed text-slate-600 dark:text-slate-300">
+              Build onboarding paths, lessons, and quizzes for your users.
             </p>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <Link
+                to="/admin/users"
+                className="btn-primary flex w-full items-center justify-center sm:inline-flex sm:w-auto"
+              >
+                Manage users
+              </Link>
+              <Link
+                to="/admin/onboarding"
+                className="btn-secondary flex w-full items-center justify-center py-3 sm:inline-flex sm:w-auto sm:py-2"
+              >
+                Onboarding builder
+              </Link>
+            </div>
           </section>
         )}
       </main>
