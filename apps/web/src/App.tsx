@@ -1,5 +1,5 @@
 import { MsalProvider } from "@azure/msal-react";
-import type { SsoConfigResponse } from "@onboarding/shared";
+import type { SsoConfigResponse } from "@manifest/shared";
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";

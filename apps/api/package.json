@@ -1,5 +1,5 @@
 {
-  "name": "@onboarding/api",
+  "name": "@manifest/api",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@azure/msal-node": "^2.16.2",
-    "@onboarding/shared": "workspace:*",
+    "@manifest/shared": "workspace:*",
     "@prisma/client": "^6.0.1",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",

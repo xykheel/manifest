@@ -1,4 +1,4 @@
-import type { JwtAccessPayload } from "@onboarding/shared";
+import type { JwtAccessPayload } from "@manifest/shared";
 
 export function decodeAccessToken(token: string): JwtAccessPayload {
   const parts = token.split(".");

@@ -1,4 +1,4 @@
-import { UserRole } from "@onboarding/shared";
+import { UserRole } from "@manifest/shared";
 import { useAuth } from "../context/AuthContext";
 
 export function DashboardPage() {
@@ -46,7 +46,7 @@ export function DashboardPage() {
           <section className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-6">
             <h2 className="text-base font-semibold text-indigo-950">Admin panel</h2>
             <p className="mt-2 text-sm text-indigo-900/90">
-              You have administrator access. Extend this section with onboarding administration tools.
+              You have administrator access. Extend this section with Manifest administration tools.
             </p>
           </section>
         )}

@@ -20,7 +20,7 @@ importers:
       '@azure/msal-node':
         specifier: ^2.16.2
         version: 2.16.3
-      '@onboarding/shared':
+      '@manifest/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@prisma/client':
@@ -87,7 +87,7 @@ importers:
       '@azure/msal-react':
         specifier: ^2.1.0
         version: 2.2.0(@azure/msal-browser@3.30.0)(react@18.3.1)
-      '@onboarding/shared':
+      '@manifest/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       axios:

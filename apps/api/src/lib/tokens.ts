@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { AuthProvider, JwtAccessPayload, UserRole } from "@onboarding/shared";
+import { AuthProvider, JwtAccessPayload, UserRole } from "@manifest/shared";
 import { env } from "./env";
 
 export function signAccessToken(payload: Omit<JwtAccessPayload, "iat" | "exp">): string {

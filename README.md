@@ -1,6 +1,6 @@
-# Onboarding platform monorepo
+# Manifest monorepo
 
-Full-stack TypeScript monorepo for a Node-based onboarding platform: **React 18** (Vite, Tailwind CSS, React Router v6), **Express** API, **PostgreSQL** with **Prisma**, and **JWT** authentication (access token in memory on the client, refresh token in an httpOnly cookie). Optional **Microsoft Entra ID (Azure AD)** sign-in is driven entirely by environment variables (`ENTRA_TENANT_ID` and `ENTRA_CLIENT_ID` must both be set to enable SSO).
+Full-stack TypeScript monorepo for **Manifest**: **React 18** (Vite, Tailwind CSS, React Router v6), **Express** API, **PostgreSQL** with **Prisma**, and **JWT** authentication (access token in memory on the client, refresh token in an httpOnly cookie). Optional **Microsoft Entra ID (Azure AD)** sign-in is driven entirely by environment variables (`ENTRA_TENANT_ID` and `ENTRA_CLIENT_ID` must both be set to enable SSO).
 
 ## Layout
 
@@ -30,15 +30,15 @@ Full-stack TypeScript monorepo for a Node-based onboarding platform: **React 18*
 
    ```bash
    pnpm install
-   pnpm --filter @onboarding/shared build
+   pnpm --filter @manifest/shared build
    cd apps/api && pnpm exec prisma migrate deploy && pnpm exec prisma db seed
    ```
 
 4. Run in separate terminals:
 
    ```bash
-   pnpm --filter @onboarding/api dev
-   pnpm --filter @onboarding/web dev
+pnpm --filter @manifest/api dev
+pnpm --filter @manifest/web dev
    ```
 
 5. Open `http://localhost:5173`. Seeded accounts (after `db seed`): `admin@example.com` / `Admin123!` (ADMIN) and `user@example.com` / `User123!` (USER).

@@ -1,5 +1,5 @@
 {
-  "name": "@onboarding/web",
+  "name": "@manifest/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
   "dependencies": {
     "@azure/msal-browser": "^3.27.0",
     "@azure/msal-react": "^2.1.0",
-    "@onboarding/shared": "workspace:*",
+    "@manifest/shared": "workspace:*",
     "axios": "^1.7.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

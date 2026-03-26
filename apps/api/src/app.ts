@@ -1,4 +1,4 @@
-import { UserRole } from "@onboarding/shared";
+import { UserRole } from "@manifest/shared";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";

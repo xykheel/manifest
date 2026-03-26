@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { UserRole } from "@onboarding/shared";
+import { UserRole } from "@manifest/shared";
 
 export function requireRole(role: UserRole) {
   return (req: Request, res: Response, next: NextFunction): void => {

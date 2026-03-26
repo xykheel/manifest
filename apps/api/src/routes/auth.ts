@@ -1,4 +1,4 @@
-import { REFRESH_COOKIE_NAME, UserRole } from "@onboarding/shared";
+import { REFRESH_COOKIE_NAME, UserRole } from "@manifest/shared";
 import { AuthProvider, Prisma, UserRole as DbUserRole } from "@prisma/client";
 import { compare } from "bcryptjs";
 import { Router } from "express";
@@ -69,7 +69,7 @@ router.post("/login", async (req, res) => {
     sub: user.id,
     email: user.email,
     role: user.role as UserRole,
-    authProvider: user.authProvider as import("@onboarding/shared").AuthProvider,
+    authProvider: user.authProvider as import("@manifest/shared").AuthProvider,
   });
   const refreshToken = signRefreshToken(user.id);
   setRefreshCookie(res, refreshToken);
@@ -94,7 +94,7 @@ router.post("/refresh", async (req, res) => {
       sub: user.id,
       email: user.email,
       role: user.role as UserRole,
-      authProvider: user.authProvider as import("@onboarding/shared").AuthProvider,
+      authProvider: user.authProvider as import("@manifest/shared").AuthProvider,
     });
     res.json({ accessToken });
   } catch {
@@ -198,7 +198,7 @@ router.post("/sso/callback", async (req, res) => {
       sub: user.id,
       email: user.email,
       role: user.role as UserRole,
-      authProvider: user.authProvider as import("@onboarding/shared").AuthProvider,
+      authProvider: user.authProvider as import("@manifest/shared").AuthProvider,
     });
     const refreshToken = signRefreshToken(user.id);
     setRefreshCookie(res, refreshToken);

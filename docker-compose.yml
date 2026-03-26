@@ -51,11 +51,11 @@ services:
       - |
         set -e
         pnpm install
-        pnpm --filter @onboarding/shared build
-        pnpm --filter @onboarding/api exec prisma generate
+        pnpm --filter @manifest/shared build
+        pnpm --filter @manifest/api exec prisma generate
         cd /app/apps/api && pnpm exec prisma migrate deploy
         cd /app
-        exec pnpm --filter @onboarding/api dev
+        exec pnpm --filter @manifest/api dev
 
   web:
     build:
@@ -79,8 +79,8 @@ services:
       - |
         set -e
         pnpm install
-        pnpm --filter @onboarding/shared build
-        exec pnpm --filter @onboarding/web dev
+        pnpm --filter @manifest/shared build
+        exec pnpm --filter @manifest/web dev
 
 volumes:
   postgres_data:

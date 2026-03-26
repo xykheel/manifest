@@ -1,4 +1,4 @@
-import type { SsoConfigResponse } from "@onboarding/shared";
+import type { SsoConfigResponse } from "@manifest/shared";
 import { useMsal } from "@azure/msal-react";
 import axios from "axios";
 import { useEffect, useState } from "react";
@@ -125,7 +125,7 @@ export function LoginPage() {
     <div className="flex min-h-full items-center justify-center px-4 py-12">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg ring-1 ring-slate-200/80">
         <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900">Sign in</h1>
-        <p className="mt-2 text-center text-sm text-slate-600">Onboarding platform</p>
+        <p className="mt-2 text-center text-sm text-slate-600">Manifest</p>
 
         {configError && (
           <p className="mt-6 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{configError}</p>

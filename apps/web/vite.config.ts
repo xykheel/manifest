@@ -9,7 +9,7 @@ const webRoot = fileURLToPath(new URL(".", import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
-      "@onboarding/shared": path.resolve(webRoot, "../../packages/shared/src/index.ts"),
+      "@manifest/shared": path.resolve(webRoot, "../../packages/shared/src/index.ts"),
     },
   },
   plugins: [react()],

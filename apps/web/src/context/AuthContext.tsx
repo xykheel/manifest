@@ -1,4 +1,4 @@
-import type { JwtAccessPayload } from "@onboarding/shared";
+import type { JwtAccessPayload } from "@manifest/shared";
 import axios from "axios";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";

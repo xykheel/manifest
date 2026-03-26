@@ -12,10 +12,10 @@ FROM deps AS dev
 COPY turbo.json package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
-RUN pnpm --filter @onboarding/shared build
-RUN pnpm --filter @onboarding/api exec prisma generate
+RUN pnpm --filter @manifest/shared build
+RUN pnpm --filter @manifest/api exec prisma generate
 EXPOSE 3001
-CMD ["pnpm", "--filter", "@onboarding/api", "dev"]
+CMD ["pnpm", "--filter", "@manifest/api", "dev"]
 
 FROM deps AS builder
 COPY turbo.json package.json pnpm-workspace.yaml pnpm-lock.yaml ./
@@ -24,9 +24,9 @@ COPY apps/api ./apps/api
 COPY apps/api/docker-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENV NODE_ENV=production
-RUN pnpm --filter @onboarding/shared build
-RUN pnpm --filter @onboarding/api exec prisma generate
-RUN pnpm --filter @onboarding/api build
+RUN pnpm --filter @manifest/shared build
+RUN pnpm --filter @manifest/api exec prisma generate
+RUN pnpm --filter @manifest/api build
 
 FROM builder AS pruned
 WORKDIR /app
