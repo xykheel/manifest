@@ -1,0 +1,16 @@
+{
+  "name": "onboarding-monorepo",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "db:migrate": "sh -c 'test -n \"$NAME\" || (echo \"Set NAME, e.g. NAME=add_users pnpm db:migrate\" && exit 1); docker compose exec api sh -lc \"cd /app/apps/api && pnpm exec prisma migrate dev --name $NAME\"'",
+    "db:seed": "docker compose exec api sh -lc 'cd /app/apps/api && pnpm exec prisma db seed'"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  }
+}
