@@ -2,8 +2,6 @@
 
 Full-stack TypeScript monorepo for a Node-based onboarding platform: **React 18** (Vite, Tailwind CSS, React Router v6), **Express** API, **PostgreSQL** with **Prisma**, and **JWT** authentication (access token in memory on the client, refresh token in an httpOnly cookie). Optional **Microsoft Entra ID (Azure AD)** sign-in is driven entirely by environment variables (`ENTRA_TENANT_ID` and `ENTRA_CLIENT_ID` must both be set to enable SSO).
 
-⚠️ **MCP**: Organisation coding and quality gates (for example Sonar and coding-standards MCPs) are not wired in this assistant session. If your team mandates those tools, connect the approved MCP servers for your project and run their checks on this codebase.
-
 ## Layout
 
 - `apps/web` — Vite + React frontend  
