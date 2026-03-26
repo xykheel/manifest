@@ -37,8 +37,8 @@ Full-stack TypeScript monorepo for **Manifest**: **React 18** (Vite, Tailwind CS
 4. Run in separate terminals:
 
    ```bash
-pnpm --filter @manifest/api dev
-pnpm --filter @manifest/web dev
+   pnpm --filter @manifest/api dev
+   pnpm --filter @manifest/web dev
    ```
 
 5. Open `http://localhost:5173`. Seeded accounts (after `db seed`): `admin@example.com` / `Admin123!` (ADMIN) and `user@example.com` / `User123!` (USER).
