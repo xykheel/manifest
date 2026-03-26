@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate",
     "build": "tsc && pnpm exec prisma generate",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",

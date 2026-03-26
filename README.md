@@ -45,7 +45,7 @@ Full-stack TypeScript monorepo for **Manifest**: **React 18** (Vite, Tailwind CS
 
 ## Docker (development)
 
-**Prerequisites:** Docker with Compose support. Copy `.env.example` to `.env` at the repository root and adjust secrets.
+**Prerequisites:** Docker with Compose support. Copy `.env.example` to `.env` at the repository root. Development Compose builds `DATABASE_URL` from `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB`, and provides local-only JWT defaults unless you set `JWT_SECRET` / `JWT_REFRESH_SECRET`. Use strong secrets for anything beyond your machine.
 
 Start the stack (PostgreSQL, API on port **3001**, Vite on **5173**):
 

@@ -6,6 +6,8 @@ RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/api/package.json ./apps/api/
+# Schema must exist before pnpm install so apps/api postinstall (prisma generate) succeeds
+COPY apps/api/prisma/schema.prisma ./apps/api/prisma/schema.prisma
 RUN pnpm install
 
 FROM deps AS dev
