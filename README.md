@@ -1,13 +1,18 @@
 # Manifest monorepo
 
 ## Summary
-The app delivers **onboarding** for end users: they browse published programmes, work through **lesson** and **quiz** steps, see a **results summary** (completion and quiz scores where applicable), and finish to a **read-only review** of everything they completed. **Administrators** can manage users and build onboarding programmes (steps, content, and quiz questions) in the admin area.
+The app delivers **onboarding** for end users: they browse published programmes, work through **lesson** and **quiz** steps, see a **results summary** (completion and quiz scores where applicable), and finish to a **read-only review** of everything they completed. **Administrators** can manage users and build onboarding programmes (steps, content, and quiz questions) in the admin area. **Lesson** steps are authored with a **[TipTap](https://tiptap.dev/)** rich-text editor (toolbar for structure, formatting, and alignment); stored HTML is sanitised when shown to learners.
 
-Full-stack TypeScript monorepo for **Manifest**: **React 18** (Vite, Tailwind CSS, React Router v6), **Express** API, **PostgreSQL** with **Prisma**, and **JWT** authentication (access token in memory on the client, refresh token in an httpOnly cookie). Optional **Microsoft Entra ID (Azure AD)** sign-in is driven entirely by environment variables (`ENTRA_TENANT_ID` and `ENTRA_CLIENT_ID` must both be set to enable SSO).
+Full-stack TypeScript monorepo for **Manifest**: **React 18** (Vite, Tailwind CSS, React Router v6), **[TipTap](https://tiptap.dev/)** on **ProseMirror** for lesson editing, **Express** API, **PostgreSQL** with **Prisma**, and **JWT** authentication (access token in memory on the client, refresh token in an httpOnly cookie). Optional **Microsoft Entra ID (Azure AD)** sign-in is driven entirely by environment variables (`ENTRA_TENANT_ID` and `ENTRA_CLIENT_ID` must both be set to enable SSO).
 
 ## Layout
 
-- `apps/web` — Vite + React frontend  
+- `apps/web` — Vite + React frontend (TipTap-based lesson editor in admin, sanitised HTML when rendering lessons)  
+
+## Terminology
+
+Copy in the product uses **programme** / **programmes** (Australian English for a structured onboarding path). URLs, JSON field names, and Prisma/API identifiers remain **`program` / `programs`** / **`programId`** for stability.
+
 - `apps/api` — Express API and Prisma schema  
 - `packages/shared` — Shared enums, types, and constants  
 

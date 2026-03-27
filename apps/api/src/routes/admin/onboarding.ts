@@ -110,7 +110,7 @@ adminOnboardingRouter.get("/programs/:programId", async (req, res) => {
     },
   });
   if (!program) {
-    res.status(404).json({ error: "Program not found" });
+    res.status(404).json({ error: "Programme not found" });
     return;
   }
   res.json({ program });
@@ -135,7 +135,7 @@ adminOnboardingRouter.patch("/programs/:programId", async (req, res) => {
     });
     res.json({ program });
   } catch {
-    res.status(404).json({ error: "Program not found" });
+    res.status(404).json({ error: "Programme not found" });
   }
 });
 
@@ -144,7 +144,7 @@ adminOnboardingRouter.delete("/programs/:programId", async (req, res) => {
     await prisma.onboardingProgram.delete({ where: { id: req.params.programId } });
     res.status(204).send();
   } catch {
-    res.status(404).json({ error: "Program not found" });
+    res.status(404).json({ error: "Programme not found" });
   }
 });
 
@@ -177,7 +177,7 @@ adminOnboardingRouter.post("/programs/:programId/steps", async (req, res) => {
   const programId = req.params.programId;
   const program = await prisma.onboardingProgram.findUnique({ where: { id: programId } });
   if (!program) {
-    res.status(404).json({ error: "Program not found" });
+    res.status(404).json({ error: "Programme not found" });
     return;
   }
   const body = parsed.data;

@@ -83,4 +83,104 @@ html.dark #root {
   .badge-draft {
     @apply inline-flex items-center rounded-full border border-slate-300/60 bg-slate-100/90 px-3 py-1 text-sm font-medium text-slate-600 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-300;
   }
+  /**
+   * TipTap / lesson HTML — avoids @tailwindcss/typography (omitted in some prod/Docker installs).
+   */
+  .lesson-rich-text-editor {
+    @apply max-w-none min-h-[336px] px-4 py-2.5 text-sm leading-relaxed text-slate-800 outline-none dark:text-slate-100;
+  }
+  .lesson-rich-text-editor p {
+    @apply my-2;
+  }
+  .lesson-rich-text-editor h1 {
+    @apply mb-1 mt-3 text-lg font-semibold text-slate-800 dark:text-slate-100;
+  }
+  .lesson-rich-text-editor h2 {
+    @apply mb-1 mt-3 text-base font-semibold text-slate-800 dark:text-slate-100;
+  }
+  .lesson-rich-text-editor h3 {
+    @apply mb-1 mt-3 text-sm font-semibold text-slate-800 dark:text-slate-100;
+  }
+  .lesson-rich-text-editor u {
+    @apply underline;
+  }
+  .lesson-rich-text-editor ul,
+  .lesson-rich-text-editor ol {
+    @apply my-2 pl-5;
+  }
+  .lesson-rich-text-editor ul {
+    list-style-type: disc;
+  }
+  .lesson-rich-text-editor ol {
+    list-style-type: decimal;
+  }
+  .lesson-rich-text-editor li {
+    @apply my-0.5;
+  }
+  .lesson-rich-text-editor li p {
+    @apply my-0;
+  }
+  .lesson-rich-text-editor strong {
+    @apply font-semibold;
+  }
+  .lesson-rich-text-editor a {
+    @apply text-brand underline underline-offset-2 hover:text-brand-hover;
+  }
+  .lesson-rich-text-editor blockquote {
+    @apply my-2 border-l-2 border-slate-300 pl-3 italic text-slate-600 dark:border-slate-600 dark:text-slate-400;
+  }
+  .lesson-rich-text-editor code {
+    @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-sm text-slate-800 dark:bg-slate-800 dark:text-slate-200;
+  }
+  .lesson-rich-text-editor p.is-editor-empty:first-child::before,
+  .tiptap p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    @apply text-slate-400 dark:text-slate-500;
+  }
+  .lesson-content-html {
+    @apply max-w-none text-lg leading-relaxed text-slate-600 dark:text-slate-300;
+  }
+  .lesson-content-html p {
+    @apply my-3;
+  }
+  .lesson-content-html h1 {
+    @apply mb-2 mt-4 text-2xl font-semibold text-slate-800 dark:text-slate-100;
+  }
+  .lesson-content-html h2 {
+    @apply mb-2 mt-4 text-xl font-semibold text-slate-800 dark:text-slate-100;
+  }
+  .lesson-content-html h3 {
+    @apply mb-2 mt-3 text-lg font-semibold text-slate-800 dark:text-slate-100;
+  }
+  .lesson-content-html ul,
+  .lesson-content-html ol {
+    @apply my-3 pl-5;
+  }
+  .lesson-content-html ul {
+    list-style-type: disc;
+  }
+  .lesson-content-html ol {
+    list-style-type: decimal;
+  }
+  .lesson-content-html li {
+    @apply my-1;
+  }
+  .lesson-content-html u {
+    @apply underline;
+  }
+  .lesson-content-html strong {
+    @apply font-semibold text-slate-800 dark:text-slate-200;
+  }
+  .lesson-content-html a {
+    @apply text-brand underline underline-offset-2 hover:text-brand-hover;
+  }
+  .lesson-content-html blockquote {
+    @apply my-3 border-l-2 border-slate-300 pl-3 italic text-slate-600 dark:border-slate-600 dark:text-slate-400;
+  }
+  .lesson-content-html code {
+    @apply rounded bg-slate-100/90 px-1 py-0.5 font-mono text-[0.9em] text-slate-800 dark:bg-slate-800 dark:text-slate-200;
+  }
 }
