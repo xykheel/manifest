@@ -202,7 +202,11 @@ export function AdminProgramEditorPage() {
   const [editQuizQuestions, setEditQuizQuestions] = useState<QuizQuestionDraft[]>([]);
   const [savingStepEdit, setSavingStepEdit] = useState(false);
 
-  const load = useCallback(async () => {
+  /**
+   * Refetches programme + steps. When `syncDetailFields` is false, Title/Description/Publishing/Department
+   * inputs keep the user's current values (so adding a step does not wipe unsaved details).
+   */
+  const load = useCallback(async (syncDetailFields: boolean) => {
     if (!programId) return;
     setError(null);
     try {
@@ -210,10 +214,12 @@ export function AdminProgramEditorPage() {
         `/api/admin/onboarding/programs/${programId}`,
       );
       setProgram(data.program);
-      setEditTitle(data.program.title);
-      setEditDescription(data.program.description ?? "");
-      setEditPublished(data.program.published);
-      setEditDepartment(data.program.department);
+      if (syncDetailFields) {
+        setEditTitle(data.program.title);
+        setEditDescription(data.program.description ?? "");
+        setEditPublished(data.program.published);
+        setEditDepartment(data.program.department);
+      }
     } catch {
       setError("Programme not found or inaccessible.");
       setProgram(null);
@@ -221,8 +227,8 @@ export function AdminProgramEditorPage() {
   }, [programId]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load(true);
+  }, [programId, load]);
 
   function beginEditLesson(step: StepRow) {
     setEditingStepId(step.id);
@@ -257,7 +263,7 @@ export function AdminProgramEditorPage() {
         lessonContent: editLessonBody,
       });
       cancelStepEdit();
-      await load();
+      await load(false);
     } catch {
       setError("Could not save lesson.");
     } finally {
@@ -286,7 +292,7 @@ export function AdminProgramEditorPage() {
         })),
       });
       cancelStepEdit();
-      await load();
+      await load(false);
     } catch {
       setError("Could not save quiz.");
     } finally {
@@ -306,7 +312,7 @@ export function AdminProgramEditorPage() {
         published: editPublished,
         department: editDepartment,
       });
-      await load();
+      await load(true);
     } catch {
       setError("Could not save programme.");
     } finally {
@@ -328,7 +334,7 @@ export function AdminProgramEditorPage() {
       setLessonTitle("");
       setLessonContent("");
       setNewLessonEditorNonce((n) => n + 1);
-      await load();
+      await load(false);
     } catch {
       setError("Could not add lesson step.");
     } finally {
@@ -362,7 +368,7 @@ export function AdminProgramEditorPage() {
       setQuizQuestions([
         { prompt: "", options: [{ label: "", isCorrect: true }, { label: "", isCorrect: false }] },
       ]);
-      await load();
+      await load(false);
     } catch {
       setError("Could not add quiz step.");
     } finally {
@@ -376,7 +382,7 @@ export function AdminProgramEditorPage() {
     setError(null);
     try {
       await api.delete(`/api/admin/onboarding/steps/${stepId}`);
-      await load();
+      await load(false);
     } catch {
       setError("Could not delete step.");
     }
@@ -393,7 +399,7 @@ export function AdminProgramEditorPage() {
       await api.post(`/api/admin/onboarding/programs/${program.id}/steps/reorder`, {
         orderedStepIds: next.map((s) => s.id),
       });
-      await load();
+      await load(false);
     } catch {
       setError("Could not reorder steps.");
     }
