@@ -1,9 +1,11 @@
+import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useState } from "react";
 import { lessonDraftToEditorHtml } from "../lib/lessonContent";
+import { isAllowedLessonLinkHref, normalizeLessonLinkInput } from "../lib/sanitizeLessonHtml";
 
 const ZOOM_STEPS = [75, 85, 90, 100, 110, 125, 150, 175] as const;
 
@@ -56,6 +58,41 @@ function IconClearFormat({ className }: { className?: string }) {
   );
 }
 
+function IconLink({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M10 13a5 5 0 0 0 7.07 0l1.41-1.41a5 5 0 0 0-7.07-7.07L9.28 6.34M14 11a5 5 0 0 0-7.07 0L5.52 12.41a5 5 0 0 0 7.07 7.07L14.72 17.66"
+      />
+    </svg>
+  );
+}
+
+function applyLinkFromPrompt(editor: Editor) {
+  const previous = editor.getAttributes("link").href as string | undefined;
+  const raw = window.prompt(
+    "Link URL (https, http, or email). Leave empty and press OK to remove the link.",
+    previous ?? "https://",
+  );
+  if (raw === null) return;
+
+  const trimmed = raw.trim();
+  if (trimmed === "") {
+    editor.chain().focus().extendMarkRange("link").unsetLink().run();
+    return;
+  }
+
+  const href = normalizeLessonLinkInput(trimmed);
+  if (!isAllowedLessonLinkHref(href)) {
+    window.alert("Use an http(s) or mailto link.");
+    return;
+  }
+
+  editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
+}
+
 const toolbarBtn =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-800 hover:text-slate-100";
 
@@ -86,6 +123,14 @@ export function LessonRichTextEditor({ value, onChange, editorKey, placeholder }
         }),
         TextAlign.configure({
           types: ["heading", "paragraph"],
+        }),
+        Link.configure({
+          openOnClick: false,
+          autolink: true,
+          linkOnPaste: true,
+          defaultProtocol: "https",
+          protocols: ["http", "https", "mailto"],
+          validate: (href) => isAllowedLessonLinkHref(href),
         }),
         Placeholder.configure({
           placeholder: placeholder ?? "Write the lesson…",
@@ -126,7 +171,7 @@ export function LessonRichTextEditor({ value, onChange, editorKey, placeholder }
     if (editor.isActive("orderedList")) {
       editor.chain().focus().toggleOrderedList().run();
     }
-    editor.chain().focus().unsetAllMarks().unsetTextAlign().setParagraph().run();
+    editor.chain().focus().unsetLink().unsetAllMarks().unsetTextAlign().setParagraph().run();
   }
 
   if (!editor) {
@@ -308,6 +353,16 @@ export function LessonRichTextEditor({ value, onChange, editorKey, placeholder }
           title="Underline"
         >
           <span className="underline">U</span>
+        </button>
+        <button
+          type="button"
+          onMouseDown={preventTipTapBlur}
+          onClick={() => applyLinkFromPrompt(editor)}
+          className={editor.isActive("link") ? toolbarBtnActive : toolbarBtn}
+          title="Link"
+          aria-label="Insert or edit link"
+        >
+          <IconLink className="h-4 w-4" />
         </button>
         <button
           type="button"

@@ -124,7 +124,7 @@ html.dark #root {
     @apply font-semibold;
   }
   .lesson-rich-text-editor a {
-    @apply text-brand underline underline-offset-2 hover:text-brand-hover;
+    @apply break-words text-brand underline underline-offset-2 hover:text-brand-hover;
   }
   .lesson-rich-text-editor blockquote {
     @apply my-2 border-l-2 border-slate-300 pl-3 italic text-slate-600 dark:border-slate-600 dark:text-slate-400;
@@ -175,7 +175,7 @@ html.dark #root {
     @apply font-semibold text-slate-800 dark:text-slate-200;
   }
   .lesson-content-html a {
-    @apply text-brand underline underline-offset-2 hover:text-brand-hover;
+    @apply break-words text-brand underline underline-offset-2 hover:text-brand-hover;
   }
   .lesson-content-html blockquote {
     @apply my-3 border-l-2 border-slate-300 pl-3 italic text-slate-600 dark:border-slate-600 dark:text-slate-400;

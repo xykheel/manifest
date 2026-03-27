@@ -13,6 +13,7 @@
     "@azure/msal-browser": "^3.27.0",
     "@azure/msal-react": "^2.1.0",
     "@manifest/shared": "workspace:*",
+    "@tiptap/extension-link": "^3.20.5",
     "@tiptap/extension-placeholder": "^3.20.5",
     "@tiptap/extension-text-align": "^3.20.5",
     "@tiptap/react": "^3.20.5",

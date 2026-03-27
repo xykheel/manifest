@@ -47,9 +47,30 @@ const REMOVE_ENTIRELY = new Set([
   "base",
 ]);
 
-function safeHref(href: string): boolean {
+/** URLs allowed in lesson links (editor + sanitised HTML). */
+export function isAllowedLessonLinkHref(href: string): boolean {
   const t = href.trim().toLowerCase();
   return t.startsWith("http://") || t.startsWith("https://") || t.startsWith("mailto:");
+}
+
+/**
+ * Normalises URL or email input from the link dialog: adds https for bare hosts, mailto for a simple email shape.
+ */
+export function normalizeLessonLinkInput(raw: string): string {
+  const t = raw.trim();
+  if (!t) return "";
+  const lower = t.toLowerCase();
+  if (lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("mailto:")) {
+    return t;
+  }
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) {
+    return `mailto:${t}`;
+  }
+  return `https://${t.replace(/^\/+/, "")}`;
+}
+
+function safeHref(href: string): boolean {
+  return isAllowedLessonLinkHref(href);
 }
 
 function filterTextAlignOnly(style: string | null): string | undefined {
