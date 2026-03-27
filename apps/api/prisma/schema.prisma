@@ -17,6 +17,17 @@ enum AuthProvider {
   ENTRA_ID
 }
 
+enum Department {
+  DEVELOPMENT
+  LEADERSHIP
+  OPTIMISATION
+  DELIVERY
+  QUALITY_ASSURANCE
+  EXPERIENCE_DESIGN
+  OTHER
+  SYSTEM_ADMINISTRATOR
+}
+
 model User {
   id           String        @id @default(uuid()) @db.Uuid
   email        String        @unique
@@ -27,7 +38,16 @@ model User {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
+  departments           UserDepartment[]
   onboardingEnrollments UserOnboardingEnrollment[]
+}
+
+model UserDepartment {
+  userId     String     @db.Uuid
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department Department
+
+  @@id([userId, department])
 }
 
 enum OnboardingStepKind {
@@ -41,12 +61,13 @@ enum OnboardingEnrollmentStatus {
 }
 
 model OnboardingProgram {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String      @id @default(uuid()) @db.Uuid
   title       String
   description String?
-  published   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  published   Boolean     @default(false)
+  department  Department  @default(OTHER)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   steps       OnboardingStep[]
   enrollments UserOnboardingEnrollment[]

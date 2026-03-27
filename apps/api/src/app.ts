@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 import { env } from "./lib/env";
+import { prisma } from "./lib/prisma";
 import { authenticate } from "./middleware/authenticate";
 import { requireRole } from "./middleware/requireRole";
 import { adminOnboardingRouter } from "./routes/admin/onboarding";
@@ -27,8 +28,30 @@ export function createApp() {
 
   app.use("/api/auth", authRouter);
 
-  app.get("/api/me", authenticate, (req, res) => {
-    res.json({ user: req.user });
+  app.get("/api/me", authenticate, async (req, res) => {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: req.user!.sub },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        authProvider: true,
+        departments: { select: { department: true } },
+      },
+    });
+    if (!dbUser) {
+      res.status(401).json({ error: "User not found" });
+      return;
+    }
+    res.json({
+      user: {
+        sub: dbUser.id,
+        email: dbUser.email,
+        role: dbUser.role,
+        authProvider: dbUser.authProvider,
+        departments: dbUser.departments.map((d) => d.department),
+      },
+    });
   });
 
   app.get("/api/admin/ping", authenticate, requireRole(UserRole.ADMIN), (_req, res) => {

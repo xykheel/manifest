@@ -1,3 +1,8 @@
+import {
+  ALL_DEPARTMENTS,
+  type Department,
+  DEPARTMENT_LABELS,
+} from "@manifest/shared";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../../lib/api";
@@ -7,6 +12,7 @@ type ProgramSummary = {
   title: string;
   description: string | null;
   published: boolean;
+  department: Department;
   stepCount: number;
   enrollmentCount: number;
   updatedAt: string;
@@ -17,6 +23,7 @@ export function AdminOnboardingProgramsPage() {
   const [programs, setPrograms] = useState<ProgramSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
+  const [department, setDepartment] = useState<Department>("OTHER");
   const [creating, setCreating] = useState(false);
 
   async function load() {
@@ -43,7 +50,7 @@ export function AdminOnboardingProgramsPage() {
     try {
       const { data } = await api.post<{ program: { id: string } }>(
         "/api/admin/onboarding/programs",
-        { title: title.trim() },
+        { title: title.trim(), department },
       );
       setTitle("");
       await load();
@@ -84,7 +91,7 @@ export function AdminOnboardingProgramsPage() {
 
         <section className="card-surface p-6 sm:p-8">
           <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">New program</h2>
-          <form className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={createProgram}>
+          <form className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end" onSubmit={createProgram}>
             <div className="min-w-0 flex-1">
               <label htmlFor="new-title" className="block text-xs font-medium text-slate-600 dark:text-slate-300">
                 Title
@@ -96,6 +103,23 @@ export function AdminOnboardingProgramsPage() {
                 className="input-field mt-1"
                 placeholder="e.g. New hire — week one"
               />
+            </div>
+            <div className="w-full sm:w-56">
+              <label htmlFor="new-dept" className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                Department
+              </label>
+              <select
+                id="new-dept"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value as Department)}
+                className="input-field mt-1"
+              >
+                {ALL_DEPARTMENTS.map((d) => (
+                  <option key={d} value={d}>
+                    {DEPARTMENT_LABELS[d]}
+                  </option>
+                ))}
+              </select>
             </div>
             <button
               type="submit"
@@ -125,7 +149,8 @@ export function AdminOnboardingProgramsPage() {
                     {p.title}
                   </Link>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {p.stepCount} steps · {p.enrollmentCount} enrollments ·{" "}
+                    {DEPARTMENT_LABELS[p.department]} · {p.stepCount} steps · {p.enrollmentCount}{" "}
+                    enrollments ·{" "}
                     {p.published ? (
                       <span className="font-medium text-brand-hover">Published</span>
                     ) : (

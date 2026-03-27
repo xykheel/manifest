@@ -1,4 +1,4 @@
-import { UserRole } from "@manifest/shared";
+import { DEPARTMENT_LABELS, UserRole } from "@manifest/shared";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -51,6 +51,16 @@ export function DashboardPage() {
             <div className="flex gap-2">
               <dt className="w-28 shrink-0 text-slate-500 dark:text-slate-400">Auth</dt>
               <dd className="font-medium text-slate-800 dark:text-slate-100">{user.authProvider}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="w-28 shrink-0 text-slate-500 dark:text-slate-400">Departments</dt>
+              <dd className="font-medium text-slate-800 dark:text-slate-100">
+                {user.departments.length === 0 ? (
+                  <span className="font-normal text-slate-500 dark:text-slate-400">None assigned</span>
+                ) : (
+                  user.departments.map((d) => DEPARTMENT_LABELS[d]).join(", ")
+                )}
+              </dd>
             </div>
           </dl>
         </section>

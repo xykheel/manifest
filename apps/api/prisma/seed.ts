@@ -1,14 +1,24 @@
-import { PrismaClient } from "@prisma/client";
+import { Department, PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
+
+async function ensureSystemAdministratorDepartment(userId: string) {
+  await prisma.userDepartment.upsert({
+    where: {
+      userId_department: { userId, department: Department.SYSTEM_ADMINISTRATOR },
+    },
+    create: { userId, department: Department.SYSTEM_ADMINISTRATOR },
+    update: {},
+  });
+}
 
 async function main() {
   const email = "admin@example.com";
   const password = "Admin123!";
   const passwordHash = await hash(password, 12);
 
-  await prisma.user.upsert({
+  const adminUser = await prisma.user.upsert({
     where: { email },
     create: {
       email,
@@ -21,7 +31,7 @@ async function main() {
   });
 
   const userPass = await hash("User123!", 12);
-  await prisma.user.upsert({
+  const normalUser = await prisma.user.upsert({
     where: { email: "user@example.com" },
     create: {
       email: "user@example.com",
@@ -32,7 +42,10 @@ async function main() {
     update: { role: "USER" },
   });
 
-  console.log("Seeded admin@example.com / Admin123! and user@example.com / User123!");
+  await ensureSystemAdministratorDepartment(adminUser.id);
+  await ensureSystemAdministratorDepartment(normalUser.id);
+
+  console.log("Seeded admin@example.com / Admin123! and user@example.com / User123! (both in System Administrator).");
 }
 
 main()

@@ -151,7 +151,11 @@ export function OnboardingListPage() {
         {programs?.length === 0 && (
           <div className="rounded-3xl border border-dashed border-slate-300/90 bg-white/50 py-16 text-center dark:border-slate-600 dark:bg-slate-900/40">
             <p className="text-lg text-slate-600 dark:text-slate-300">
-              No published onboarding programmes yet.
+              No published onboarding programmes match your departments, or none are published yet.
+            </p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              People in <strong>System Administrator</strong> see every programme; others only see content for
+              their assigned departments.
             </p>
           </div>
         )}
