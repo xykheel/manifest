@@ -166,8 +166,23 @@ html.dark #root {
   .lesson-rich-text-editor blockquote {
     @apply my-2 border-l-2 border-slate-300 pl-3 italic text-slate-600 dark:border-slate-600 dark:text-slate-400;
   }
+  .lesson-rich-text-editor pre {
+    @apply my-3 max-w-full rounded-lg border border-slate-200/80 bg-slate-100/90 p-3 font-mono text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-200;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .lesson-rich-text-editor pre code {
+    @apply border-0 bg-transparent p-0 text-sm text-inherit;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
   .lesson-rich-text-editor code {
     @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-sm text-slate-800 dark:bg-slate-800 dark:text-slate-200;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
   .lesson-rich-text-editor p.is-editor-empty:first-child::before,
   .tiptap p.is-editor-empty:first-child::before {
@@ -178,7 +193,7 @@ html.dark #root {
     @apply text-slate-400 dark:text-slate-500;
   }
   .lesson-content-html {
-    @apply max-w-none text-lg leading-relaxed text-slate-600 dark:text-slate-300;
+    @apply min-w-0 max-w-full text-lg leading-relaxed text-slate-600 dark:text-slate-300;
   }
   .lesson-content-html p {
     @apply my-3;
@@ -220,7 +235,22 @@ html.dark #root {
   .lesson-content-html blockquote {
     @apply my-3 border-l-2 border-slate-300 pl-3 italic text-slate-600 dark:border-slate-600 dark:text-slate-400;
   }
+  .lesson-content-html pre {
+    @apply my-3 max-w-full overflow-x-auto rounded-lg border border-slate-200/80 bg-slate-100/90 p-3 font-mono text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-200;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .lesson-content-html pre code {
+    @apply border-0 bg-transparent p-0 text-sm text-inherit;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
   .lesson-content-html code {
     @apply rounded bg-slate-100/90 px-1 py-0.5 font-mono text-[0.9em] text-slate-800 dark:bg-slate-800 dark:text-slate-200;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
 }
