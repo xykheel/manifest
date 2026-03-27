@@ -47,6 +47,7 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+      - /app/apps/api/node_modules
     command:
       - sh
       - -lc
@@ -77,6 +78,7 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+      - /app/apps/web/node_modules
     command:
       - sh
       - -lc

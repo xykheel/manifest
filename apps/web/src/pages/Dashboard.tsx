@@ -1,4 +1,4 @@
-import { DEPARTMENT_LABELS, UserRole } from "@manifest/shared";
+import { UserRole } from "@manifest/shared";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -281,38 +281,29 @@ export function DashboardPage() {
   return (
     <div className="min-h-0 flex-1 bg-slate-100/90 dark:bg-slate-950">
       <main className="mx-auto max-w-7xl space-y-8 px-4 py-8 md:space-y-10 md:py-10">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-md-headline font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-              Dashboard
-            </h1>
-            {stats && (
-              <p className="mt-2 max-w-2xl text-base leading-relaxed text-slate-600 dark:text-slate-400">
-                <span className="font-medium text-slate-800 dark:text-slate-200">
-                  {stats.programmesAvailable} programme{stats.programmesAvailable === 1 ? "" : "s"}{" "}
-                  available
-                </span>
-                {" · "}
-                <span>
-                  {stats.programmesCompleted} completed
-                  {stats.averageQuizScorePercent != null &&
-                    ` · ${stats.averageQuizScorePercent}% avg. quiz score (across completed quizzes)`}
-                </span>
-              </p>
-            )}
-            {loadError && (
-              <p className="mt-2 text-base text-amber-800 dark:text-amber-200/90" role="alert">
-                {loadError}
-              </p>
-            )}
-          </div>
-          <div className="flex shrink-0 flex-col items-start gap-1 rounded-2xl border border-slate-200/90 bg-white/90 px-4 py-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:items-end">
-            <span className="font-medium text-slate-800 dark:text-slate-100">Signed in</span>
-            <span className="max-w-[16rem] truncate text-slate-600 dark:text-slate-400">{user.email}</span>
-            <Link to="/onboarding" className="link-brand mt-1 text-sm">
-              Go to onboarding →
-            </Link>
-          </div>
+        <header>
+          <h1 className="text-md-headline font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+            Dashboard
+          </h1>
+          {stats && (
+            <p className="mt-2 max-w-2xl text-base leading-relaxed text-slate-600 dark:text-slate-400">
+              <span className="font-medium text-slate-800 dark:text-slate-200">
+                {stats.programmesAvailable} programme{stats.programmesAvailable === 1 ? "" : "s"}{" "}
+                available
+              </span>
+              {" · "}
+              <span>
+                {stats.programmesCompleted} completed
+                {stats.averageQuizScorePercent != null &&
+                  ` · ${stats.averageQuizScorePercent}% avg. quiz score (across completed quizzes)`}
+              </span>
+            </p>
+          )}
+          {loadError && (
+            <p className="mt-2 text-base text-amber-800 dark:text-amber-200/90" role="alert">
+              {loadError}
+            </p>
+          )}
         </header>
 
         {!stats && !loadError && (
@@ -393,36 +384,6 @@ export function DashboardPage() {
             </section>
           </>
         )}
-
-        <section className="card-surface p-6 sm:p-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Account
-          </h2>
-          <dl className="mt-4 space-y-3 text-base">
-            <div className="flex gap-2">
-              <dt className="w-28 shrink-0 text-slate-500 dark:text-slate-400">Email</dt>
-              <dd className="font-medium text-slate-800 dark:text-slate-100">{user.email}</dd>
-            </div>
-            <div className="flex gap-2">
-              <dt className="w-28 shrink-0 text-slate-500 dark:text-slate-400">Role</dt>
-              <dd className="font-medium text-slate-800 dark:text-slate-100">{user.role}</dd>
-            </div>
-            <div className="flex gap-2">
-              <dt className="w-28 shrink-0 text-slate-500 dark:text-slate-400">Auth</dt>
-              <dd className="font-medium text-slate-800 dark:text-slate-100">{user.authProvider}</dd>
-            </div>
-            <div className="flex gap-2">
-              <dt className="w-28 shrink-0 text-slate-500 dark:text-slate-400">Departments</dt>
-              <dd className="font-medium text-slate-800 dark:text-slate-100">
-                {user.departments.length === 0 ? (
-                  <span className="font-normal text-slate-500 dark:text-slate-400">None assigned</span>
-                ) : (
-                  user.departments.map((d) => DEPARTMENT_LABELS[d]).join(", ")
-                )}
-              </dd>
-            </div>
-          </dl>
-        </section>
 
         {isAdmin && (
           <section className="rounded-2xl border border-brand/20 bg-gradient-to-br from-brand-light/80 to-brand-soft/40 p-6 sm:p-8 dark:border-brand/40 dark:bg-slate-900 dark:[background-image:none]">
