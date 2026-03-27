@@ -4,6 +4,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { AccountMenu } from "./AccountMenu";
 import { AdministrationMegaMenu } from "./AdministrationMegaMenu";
+import { PageWaveFooter } from "./PageWaveFooter";
 import { ThemeToggle } from "./ThemeToggle";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -199,9 +200,10 @@ export function AuthenticatedLayout() {
         </>
       )}
 
-      <div className="relative z-0 flex flex-1 flex-col bg-transparent dark:bg-slate-950">
+      <div className="relative z-0 flex min-h-0 flex-1 flex-col bg-transparent dark:bg-slate-950">
         <Outlet />
       </div>
+      <PageWaveFooter />
     </div>
   );
 }
