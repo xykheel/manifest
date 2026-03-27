@@ -626,8 +626,8 @@ onboardingRouter.post("/programs/:programId/complete-step", async (req, res) => 
         return;
       }
       const opt = q.options.find((o) => o.id === chosen);
-      if (!opt || !opt.isCorrect) {
-        res.status(400).json({ error: "One or more answers are incorrect" });
+      if (!opt) {
+        res.status(400).json({ error: "Invalid answer selection" });
         return;
       }
     }
