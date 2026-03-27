@@ -2,6 +2,7 @@ import { UserRole } from "@manifest/shared";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { AccountMenu } from "./AccountMenu";
 import { AdministrationMegaMenu } from "./AdministrationMegaMenu";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -18,9 +19,6 @@ const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
       ? "bg-brand/15 text-brand"
       : "text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
   }`;
-
-const logoutButtonClass =
-  "btn-secondary inline-flex h-10 shrink-0 items-center justify-center whitespace-nowrap px-3 sm:px-4 text-sm font-medium sm:text-base";
 
 function HamburgerIcon({ open }: { open: boolean }) {
   return (
@@ -42,7 +40,7 @@ function HamburgerIcon({ open }: { open: boolean }) {
 }
 
 export function AuthenticatedLayout() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   if (!user) {
@@ -93,9 +91,7 @@ export function AuthenticatedLayout() {
             </button>
             <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
               <ThemeToggle />
-              <button type="button" onClick={() => void logout()} className={logoutButtonClass}>
-                Log out
-              </button>
+              <AccountMenu />
             </div>
           </div>
 
@@ -128,9 +124,7 @@ export function AuthenticatedLayout() {
             </nav>
             <div className="flex shrink-0 items-center gap-2">
               <ThemeToggle />
-              <button type="button" onClick={() => void logout()} className={logoutButtonClass}>
-                Log out
-              </button>
+              <AccountMenu />
             </div>
           </div>
         </div>
