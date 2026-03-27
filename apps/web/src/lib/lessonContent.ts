@@ -20,10 +20,14 @@ export function lessonDraftToEditorHtml(raw: string): string {
 
 export function isRichTextEmpty(html: string): boolean {
   if (typeof document === "undefined") {
-    return html.replace(/<[^>]*>/g, "").trim().length === 0;
+    const text = html.replace(/<[^>]*>/g, "").trim();
+    if (text.length > 0) return false;
+    return !/<img[\s>]/i.test(html);
   }
   const doc = new DOMParser().parseFromString(html, "text/html");
-  return (doc.body.textContent ?? "").trim().length === 0;
+  const text = (doc.body.textContent ?? "").trim();
+  if (text.length > 0) return false;
+  return doc.body.querySelector("img") === null;
 }
 
 export function lessonContentPlainPreview(html: string, maxLen: number): string {
