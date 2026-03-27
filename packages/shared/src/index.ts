@@ -15,6 +15,9 @@ export type AuthProvider = (typeof AuthProvider)[keyof typeof AuthProvider];
 export interface JwtAccessPayload {
   sub: string;
   email: string;
+  /** Display names from profile (optional for legacy tokens). */
+  firstName?: string | null;
+  lastName?: string | null;
   role: UserRole;
   authProvider: AuthProvider;
   iat?: number;

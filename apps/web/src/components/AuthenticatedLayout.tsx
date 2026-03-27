@@ -118,6 +118,9 @@ export function AuthenticatedLayout() {
                   <NavLink to="/admin/users" className={navLinkClass}>
                     Users
                   </NavLink>
+                  <NavLink to="/admin/analytics" className={navLinkClass}>
+                    Analytics
+                  </NavLink>
                   <NavLink to="/admin/onboarding" className={navLinkClass}>
                     Builder
                   </NavLink>
@@ -192,6 +195,13 @@ export function AuthenticatedLayout() {
                       onClick={() => setMobileOpen(false)}
                     >
                       Builder
+                    </NavLink>
+                    <NavLink
+                      to="/admin/analytics"
+                      className={mobileNavLinkClass}
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      Analytics
                     </NavLink>
                   </>
                 )}

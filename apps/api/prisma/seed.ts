@@ -22,12 +22,14 @@ async function main() {
     where: { email },
     create: {
       email,
+      firstName: "Admin",
+      lastName: "User",
       passwordHash,
       role: "ADMIN",
       authProvider: "LOCAL",
     },
     // Do not reset password on every seed (e.g. Docker restart)
-    update: { role: "ADMIN" },
+    update: { role: "ADMIN", firstName: "Admin", lastName: "User" },
   });
 
   const userPass = await hash("User123!", 12);
@@ -35,11 +37,13 @@ async function main() {
     where: { email: "user@example.com" },
     create: {
       email: "user@example.com",
+      firstName: "Sample",
+      lastName: "Learner",
       passwordHash: userPass,
       role: "USER",
       authProvider: "LOCAL",
     },
-    update: { role: "USER" },
+    update: { role: "USER", firstName: "Sample", lastName: "Learner" },
   });
 
   await ensureSystemAdministratorDepartment(adminUser.id);

@@ -1,12 +1,10 @@
-import type { SsoConfigResponse } from "@manifest/shared";
 import { useMsal } from "@azure/msal-react";
-import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { useAuth } from "../context/AuthContext";
 import { useSso } from "../context/SsoContext";
-import { api, baseURL } from "../lib/api";
+import { api } from "../lib/api";
 import { loginRequest } from "../lib/msal";
 
 function MicrosoftLogo() {
@@ -20,13 +18,7 @@ function MicrosoftLogo() {
   );
 }
 
-function MicrosoftSignInButton({
-  configReady,
-  configError,
-}: {
-  configReady: boolean;
-  configError: boolean;
-}) {
+function MicrosoftSignInButton() {
   const { instance } = useMsal();
   const [msLoading, setMsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +40,7 @@ function MicrosoftSignInButton({
         type="button"
         className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700/80"
         onClick={onMicrosoft}
-        disabled={msLoading || !configReady || configError}
+        disabled={msLoading}
       >
         <MicrosoftLogo />
         {msLoading ? "Redirecting…" : "Sign in with Microsoft"}
@@ -59,12 +51,10 @@ function MicrosoftSignInButton({
 }
 
 export function LoginPage() {
-  const { ssoEnabled } = useSso();
+  const { ssoEnabled, ready: ssoReady } = useSso();
   const { setSession, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const [localConfig, setLocalConfig] = useState<SsoConfigResponse | null>(null);
-  const [configError, setConfigError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
@@ -76,19 +66,6 @@ export function LoginPage() {
       navigate("/dashboard", { replace: true });
     }
   }, [isAuthenticated, navigate]);
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const { data } = await axios.get<SsoConfigResponse>(`${baseURL}/api/auth/sso/config`, {
-          withCredentials: true,
-        });
-        setLocalConfig(data);
-      } catch {
-        setConfigError("Could not load sign-in options.");
-      }
-    })();
-  }, []);
 
   function validate(): boolean {
     const next: typeof fieldErrors = {};
@@ -118,8 +95,8 @@ export function LoginPage() {
     }
   }
 
-  const showSso = ssoEnabled && localConfig?.ssoEnabled === true;
-  const configReady = Boolean(localConfig);
+  /** SSO UI matches AppShell: MSAL is only mounted when the API reports Entra tenant + client ID. */
+  const showSso = ssoEnabled && ssoReady;
 
   return (
     <div className="relative flex min-h-full items-center justify-center px-4 py-12">
@@ -132,16 +109,10 @@ export function LoginPage() {
         </h1>
         <p className="mt-3 text-center text-lg text-brand">Manifest</p>
 
-        {configError && (
-          <p className="mt-6 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">
-            {configError}
-          </p>
-        )}
-
         <div className="mt-8 space-y-6">
           {showSso && (
             <>
-              <MicrosoftSignInButton configReady={configReady} configError={Boolean(configError)} />
+              <MicrosoftSignInButton />
 
               <div className="relative">
                 <div aria-hidden className="absolute inset-0 flex items-center">
@@ -200,11 +171,7 @@ export function LoginPage() {
               </p>
             )}
 
-            <button
-              type="submit"
-              disabled={submitting || Boolean(configError)}
-              className="btn-primary w-full"
-            >
+            <button type="submit" disabled={submitting} className="btn-primary w-full">
               {submitting ? "Signing in…" : "Sign in"}
             </button>
           </form>

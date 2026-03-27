@@ -6,17 +6,34 @@ import { env } from "./lib/env";
 import { prisma } from "./lib/prisma";
 import { authenticate } from "./middleware/authenticate";
 import { requireRole } from "./middleware/requireRole";
+import { adminAnalyticsRouter } from "./routes/admin/analytics";
 import { adminOnboardingRouter } from "./routes/admin/onboarding";
 import { adminUsersRouter } from "./routes/admin/users";
 import { authRouter } from "./routes/auth";
 import { onboardingRouter } from "./routes/onboarding";
 
+const localDevOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+
 export function createApp() {
   const app = express();
   app.use(
     cors({
-      origin: env.webOrigin,
       credentials: true,
+      origin(origin, callback) {
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+        if (origin === env.webOrigin) {
+          callback(null, true);
+          return;
+        }
+        if (env.nodeEnv !== "production" && localDevOrigin.test(origin)) {
+          callback(null, true);
+          return;
+        }
+        callback(null, false);
+      },
     }),
   );
   app.use(express.json());
@@ -34,6 +51,8 @@ export function createApp() {
       select: {
         id: true,
         email: true,
+        firstName: true,
+        lastName: true,
         role: true,
         authProvider: true,
         departments: { select: { department: true } },
@@ -47,6 +66,8 @@ export function createApp() {
       user: {
         sub: dbUser.id,
         email: dbUser.email,
+        firstName: dbUser.firstName,
+        lastName: dbUser.lastName,
         role: dbUser.role,
         authProvider: dbUser.authProvider,
         departments: dbUser.departments.map((d) => d.department),
@@ -64,6 +85,7 @@ export function createApp() {
     requireRole(UserRole.ADMIN),
     adminOnboardingRouter,
   );
+  app.use("/api/admin", authenticate, requireRole(UserRole.ADMIN), adminAnalyticsRouter);
   app.use("/api/admin", authenticate, requireRole(UserRole.ADMIN), adminUsersRouter);
   app.use("/api/onboarding", authenticate, onboardingRouter);
 

@@ -19,6 +19,8 @@ function meFromJwt(jwt: JwtAccessPayload, departments: MeUser["departments"] = [
   return {
     sub: jwt.sub,
     email: jwt.email,
+    firstName: jwt.firstName ?? null,
+    lastName: jwt.lastName ?? null,
     role: jwt.role,
     authProvider: jwt.authProvider,
     iat: jwt.iat,
@@ -36,11 +38,16 @@ async function fetchMeIntoSetter(setUser: Dispatch<SetStateAction<MeUser | null>
   }
 }
 
+export type LogoutOptions = {
+  /** Set when Microsoft `logoutRedirect` will perform navigation (avoid double-routing). */
+  skipNavigate?: boolean;
+};
+
 type AuthContextValue = {
   user: MeUser | null;
   isAuthenticated: boolean;
   setSession: (accessToken: string) => void;
-  logout: () => Promise<void>;
+  logout: (options?: LogoutOptions) => Promise<void>;
   hydrationDone: boolean;
 };
 
@@ -58,15 +65,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void fetchMeIntoSetter(setUser);
   }, []);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (options?: LogoutOptions) => {
     try {
       await api.post("/api/auth/logout");
     } catch {
-      /* ignore */
+      try {
+        await axios.post(`${baseURL}/api/auth/logout`, {}, { withCredentials: true });
+      } catch {
+        /* still clear client session */
+      }
     }
     tokenStore.set(null);
     setUser(null);
-    navigate("/login", { replace: true });
+    if (!options?.skipNavigate) {
+      navigate("/login", { replace: true });
+    }
   }, [navigate]);
 
   useEffect(() => {
@@ -104,7 +117,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(meFromJwt(decoded, []));
         void fetchMeIntoSetter(setUser);
       } catch {
-        tokenStore.set(null);
+        // Refresh can fail while Microsoft SSO is still completing: the refresh cookie is only set
+        // after POST /api/auth/sso/callback. A concurrent boot-time refresh must not wipe an access
+        // token that SSO writes to tokenStore a moment later.
+        if (!tokenStore.get()) {
+          tokenStore.set(null);
+        }
       } finally {
         setHydrationDone(true);
       }

@@ -19,7 +19,7 @@ function usePrefersHoverMenus() {
 
 const menuTileClass = (isActive: boolean) =>
   [
-    "group/menu block rounded-2xl border p-3 transition duration-200 sm:p-4",
+    "group/menu flex h-full min-h-0 flex-col rounded-2xl border p-3 transition duration-200 sm:p-4",
     isActive
       ? "border-brand/30 bg-brand-light/90 shadow-sm ring-1 ring-brand/20 dark:border-brand/40 dark:bg-slate-800 dark:ring-brand/30"
       : "border-slate-200 bg-white hover:border-brand/25 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-brand/35 dark:hover:bg-slate-700/80",
@@ -123,13 +123,13 @@ export function AdministrationMegaMenu() {
           role="menu"
           aria-label="Administration"
         >
-          <div className="relative w-[min(calc(100vw-2rem),22rem)] overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-megamenu ring-1 ring-slate-900/5 dark:border-slate-600 dark:bg-slate-900 dark:ring-white/10 sm:w-[28rem] sm:p-5">
+          <div className="relative w-[min(calc(100vw-2rem),22rem)] overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-megamenu ring-1 ring-slate-900/5 dark:border-slate-600 dark:bg-slate-900 dark:ring-white/10 sm:w-[min(40rem,calc(100vw-2rem))] sm:p-5">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-brand/12 to-transparent dark:from-brand/25 dark:to-transparent" />
             <p className="relative border-b border-slate-200 pb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-600 dark:text-slate-400">
               Administration
             </p>
-            <ul className="relative mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4">
-              <li>
+            <ul className="relative mt-4 grid auto-rows-[minmax(0,1fr)] gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
+              <li className="h-full min-h-0">
                 <NavLink
                   to="/admin/users"
                   role="menuitem"
@@ -143,7 +143,7 @@ export function AdministrationMegaMenu() {
                   </span>
                 </NavLink>
               </li>
-              <li>
+              <li className="h-full min-h-0">
                 <NavLink
                   to="/admin/onboarding"
                   role="menuitem"
@@ -154,6 +154,20 @@ export function AdministrationMegaMenu() {
                   </span>
                   <span className="mt-1 block text-sm leading-snug text-slate-600 dark:text-slate-300">
                     Programmes, steps, and quizzes.
+                  </span>
+                </NavLink>
+              </li>
+              <li className="h-full min-h-0 sm:col-span-2 lg:col-span-1">
+                <NavLink
+                  to="/admin/analytics"
+                  role="menuitem"
+                  className={({ isActive }) => menuTileClass(isActive)}
+                >
+                  <span className="block text-base font-semibold text-slate-800 dark:text-slate-100">
+                    Analytics
+                  </span>
+                  <span className="mt-1 block text-sm leading-snug text-slate-600 dark:text-slate-300">
+                    Usage, completions, and programme metrics.
                   </span>
                 </NavLink>
               </li>

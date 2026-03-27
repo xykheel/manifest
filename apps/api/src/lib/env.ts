@@ -26,6 +26,14 @@ export const env = {
   get ssoEnabled(): boolean {
     return Boolean(tenantId && clientId);
   },
+  /**
+   * Browsers reject `Set-Cookie` with `Secure` over plain HTTP. Using NODE_ENV alone breaks local
+   * or Docker stacks that run production mode but `WEB_ORIGIN` is still `http://…`.
+   */
+  get refreshCookieSecure(): boolean {
+    const origin = trimOrEmpty(process.env.WEB_ORIGIN) || "http://localhost:5173";
+    return origin.startsWith("https:");
+  },
 };
 
 export function assertEnv(): void {

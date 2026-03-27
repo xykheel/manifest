@@ -1,6 +1,10 @@
 import { UserRole } from "@manifest/shared";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import {
+  CompletionsAreaChart,
+  type CompletionsTimelineRow,
+} from "../components/CompletionsAreaChart";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../lib/api";
 
@@ -12,115 +16,6 @@ type DashboardApi = {
   quizScoreBands: { key: string; label: string; count: number; fill: string }[];
   quizAttemptsCounted: number;
 };
-
-type TimelineRow = { label: string; count: number };
-
-function CompletionsAreaChart({ data }: { data: TimelineRow[] }) {
-  const [hover, setHover] = useState<{ label: string; count: number } | null>(null);
-  const w = 640;
-  const h = 220;
-  const padL = 40;
-  const padR = 12;
-  const padT = 16;
-  const padB = 36;
-  const innerW = w - padL - padR;
-  const innerH = h - padT - padB;
-  const maxY = Math.max(1, ...data.map((d) => d.count));
-  const n = data.length;
-  const stepX = n <= 1 ? 0 : innerW / (n - 1);
-
-  const points = data.map((d, i) => {
-    const x = padL + (n <= 1 ? innerW / 2 : i * stepX);
-    const y = padT + innerH - (d.count / maxY) * innerH;
-    return { x, y, ...d };
-  });
-
-  const lineD = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
-  const areaD =
-    points.length > 0
-      ? `${lineD} L ${points[points.length - 1].x.toFixed(1)} ${(padT + innerH).toFixed(1)} L ${points[0].x.toFixed(1)} ${(padT + innerH).toFixed(1)} Z`
-      : "";
-
-  const gridYs = [0, 0.25, 0.5, 0.75, 1].map((t) => padT + innerH * (1 - t));
-
-  return (
-    <div className="relative w-full">
-      <svg
-        viewBox={`0 0 ${w} ${h}`}
-        className="h-[280px] w-full text-slate-500 dark:text-slate-400"
-        role="img"
-        aria-label="Programme completions by month"
-      >
-        <defs>
-          <linearGradient id="dashAreaFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#00A3AD" stopOpacity={0.35} />
-            <stop offset="100%" stopColor="#00A3AD" stopOpacity={0.02} />
-          </linearGradient>
-        </defs>
-        {gridYs.map((gy) => (
-          <line
-            key={gy}
-            x1={padL}
-            y1={gy}
-            x2={w - padR}
-            y2={gy}
-            className="stroke-slate-200 dark:stroke-slate-700"
-            strokeDasharray="4 6"
-            strokeWidth={1}
-          />
-        ))}
-        {areaD && <path d={areaD} fill="url(#dashAreaFill)" />}
-        {lineD && (
-          <path
-            d={lineD}
-            fill="none"
-            stroke="#00A3AD"
-            strokeWidth={2}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-        )}
-        {points.map((p) => (
-          <circle
-            key={p.label}
-            cx={p.x}
-            cy={p.y}
-            r={6}
-            fill="#00A3AD"
-            className="cursor-pointer"
-            onMouseEnter={() => setHover({ label: p.label, count: p.count })}
-            onMouseLeave={() => setHover(null)}
-          />
-        ))}
-        {points.map((p) => (
-          <text
-            key={`t-${p.label}`}
-            x={p.x}
-            y={h - 8}
-            textAnchor="middle"
-            className="fill-current text-[10px]"
-          >
-            {p.label}
-          </text>
-        ))}
-        {[0, Math.ceil(maxY / 2), maxY].map((tick) => {
-          const gy = padT + innerH - (tick / maxY) * innerH;
-          return (
-            <text key={tick} x={4} y={gy + 4} className="fill-current text-[10px]">
-              {tick}
-            </text>
-          );
-        })}
-      </svg>
-      {hover && (
-        <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-md dark:border-slate-600 dark:bg-slate-800">
-          <div className="font-medium text-slate-800 dark:text-slate-100">{hover.label}</div>
-          <div className="text-slate-600 dark:text-slate-300">{hover.count} completion(s)</div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function polar(cx: number, cy: number, r: number, angle: number) {
   return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)] as const;
@@ -269,7 +164,7 @@ export function DashboardPage() {
     return stats.quizScoreBands.filter((b) => b.count > 0);
   }, [stats]);
 
-  const areaData = useMemo((): TimelineRow[] => {
+  const areaData = useMemo((): CompletionsTimelineRow[] => {
     if (!stats?.completionsTimeline.length) {
       return [{ label: "—", count: 0 }];
     }
@@ -351,7 +246,11 @@ export function DashboardPage() {
                     By month
                   </span>
                 </div>
-                <CompletionsAreaChart data={areaData} />
+                <CompletionsAreaChart
+                  data={areaData}
+                  ariaLabel="Your programme completions by month"
+                  countLabel="completion(s)"
+                />
                 {stats.completionsTimeline.length === 0 && (
                   <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                     Finish a programme to see completions over time.
@@ -397,6 +296,12 @@ export function DashboardPage() {
                 className="btn-primary flex w-full items-center justify-center sm:inline-flex sm:w-auto"
               >
                 Manage users
+              </Link>
+              <Link
+                to="/admin/analytics"
+                className="btn-secondary flex w-full items-center justify-center py-3 sm:inline-flex sm:w-auto sm:py-2"
+              >
+                Analytics
               </Link>
               <Link
                 to="/admin/onboarding"

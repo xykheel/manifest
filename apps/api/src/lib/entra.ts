@@ -48,10 +48,35 @@ export async function acquireTokenByAuthCode(code: string, redirectUri: string) 
   return result;
 }
 
-export async function fetchOidAndEmailFromIdTokenClaims(payload: JWTPayload): Promise<{
+function namesFromIdTokenClaims(payload: JWTPayload): {
+  firstName: string | null;
+  lastName: string | null;
+} {
+  const given = (payload.given_name as string | undefined)?.trim();
+  const family = (payload.family_name as string | undefined)?.trim();
+  if (given || family) {
+    return {
+      firstName: given && given.length > 0 ? given : null,
+      lastName: family && family.length > 0 ? family : null,
+    };
+  }
+  const name = typeof payload.name === "string" ? payload.name.trim() : "";
+  if (!name) {
+    return { firstName: null, lastName: null };
+  }
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return { firstName: parts[0] ?? null, lastName: parts.slice(1).join(" ") };
+  }
+  return { firstName: parts[0] ?? null, lastName: null };
+}
+
+export function fetchProfileFromIdTokenClaims(payload: JWTPayload): {
   oid: string;
   email: string;
-}> {
+  firstName: string | null;
+  lastName: string | null;
+} {
   const oid = (payload.oid ?? payload.sub) as string | undefined;
   if (!oid) throw new Error("Token missing oid/sub");
 
@@ -61,5 +86,12 @@ export async function fetchOidAndEmailFromIdTokenClaims(payload: JWTPayload): Pr
     (payload.upn as string | undefined);
   if (!email) throw new Error("Token missing email claim");
 
-  return { oid, email: email.toLowerCase() };
+  const { firstName, lastName } = namesFromIdTokenClaims(payload);
+  return { oid, email: email.toLowerCase(), firstName, lastName };
+}
+
+/** @deprecated Use fetchProfileFromIdTokenClaims for name fields. */
+export function fetchOidAndEmailFromIdTokenClaims(payload: JWTPayload): { oid: string; email: string } {
+  const p = fetchProfileFromIdTokenClaims(payload);
+  return { oid: p.oid, email: p.email };
 }
