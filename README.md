@@ -1,5 +1,8 @@
 # Manifest monorepo
 
+## Summary
+The app delivers **onboarding** for end users: they browse published programmes, work through **lesson** and **quiz** steps, see a **results summary** (completion and quiz scores where applicable), and finish to a **read-only review** of everything they completed. **Administrators** can manage users and build onboarding programmes (steps, content, and quiz questions) in the admin area.
+
 Full-stack TypeScript monorepo for **Manifest**: **React 18** (Vite, Tailwind CSS, React Router v6), **Express** API, **PostgreSQL** with **Prisma**, and **JWT** authentication (access token in memory on the client, refresh token in an httpOnly cookie). Optional **Microsoft Entra ID (Azure AD)** sign-in is driven entirely by environment variables (`ENTRA_TENANT_ID` and `ENTRA_CLIENT_ID` must both be set to enable SSO).
 
 ## Layout
