@@ -79,7 +79,7 @@ export function AuthenticatedLayout() {
   return (
     <div className="flex min-h-dvh min-h-screen flex-col bg-transparent dark:bg-slate-950">
       <header className="sticky top-0 z-50 overflow-visible border-b border-slate-200/70 bg-white/80 shadow-sm backdrop-blur-xl supports-[backdrop-filter]:bg-white/75 dark:border-slate-700/70 dark:bg-slate-950/80 dark:shadow-black/10 dark:supports-[backdrop-filter]:bg-slate-950/75">
-        <div className="mx-auto max-w-6xl px-4 py-3 sm:py-3.5">
+        <div className="mx-auto max-w-7xl px-4 py-3 sm:py-3.5">
           <div className="flex items-center justify-between gap-2 md:hidden">
             <button
               type="button"

@@ -221,7 +221,7 @@ onboardingRouter.get("/programs/:programId", async (req, res) => {
     },
   });
   if (!program) {
-    res.status(404).json({ error: "Program not found" });
+    res.status(404).json({ error: "Programme not found" });
     return;
   }
   const enrollment = program.enrollments[0] ?? null;
@@ -253,7 +253,7 @@ onboardingRouter.post("/programs/:programId/start", async (req, res) => {
     where: { id: programId, published: true, ...visibility },
   });
   if (!program) {
-    res.status(404).json({ error: "Program not found" });
+    res.status(404).json({ error: "Programme not found" });
     return;
   }
   const existing = await prisma.userOnboardingEnrollment.findUnique({
@@ -298,12 +298,12 @@ onboardingRouter.get("/programs/:programId/player", async (req, res) => {
     },
   });
   if (!program) {
-    res.status(404).json({ error: "Program not found" });
+    res.status(404).json({ error: "Programme not found" });
     return;
   }
   const enrollment = program.enrollments[0] ?? null;
   if (!enrollment) {
-    res.status(400).json({ error: "Start the program first" });
+    res.status(400).json({ error: "Start the programme first" });
     return;
   }
   const steps = program.steps;
@@ -461,14 +461,14 @@ onboardingRouter.post("/programs/:programId/complete-step", async (req, res) => 
     },
   });
   if (!program) {
-    res.status(404).json({ error: "Program not found" });
+    res.status(404).json({ error: "Programme not found" });
     return;
   }
   const enrollment = await prisma.userOnboardingEnrollment.findUnique({
     where: { userId_programId: { userId, programId } },
   });
   if (!enrollment) {
-    res.status(400).json({ error: "Start the program first" });
+    res.status(400).json({ error: "Start the programme first" });
     return;
   }
   if (enrollment.status === OnboardingEnrollmentStatus.COMPLETED) {

@@ -29,7 +29,7 @@ export function OnboardingListPage() {
         const { data } = await api.get<{ programs: ProgramRow[] }>("/api/onboarding/programs");
         setPrograms(data.programs);
       } catch {
-        setError("Could not load onboarding programs.");
+        setError("Could not load onboarding programmes.");
       }
     })();
   }, []);
@@ -61,7 +61,7 @@ export function OnboardingListPage() {
 
   return (
     <div className="min-h-0 flex-1 bg-transparent dark:bg-slate-950">
-      <main className="mx-auto max-w-5xl space-y-10 px-4 py-10 md:space-y-12 md:py-12">
+      <main className="mx-auto max-w-7xl space-y-10 px-4 py-10 md:space-y-12 md:py-12">
         <section className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white/80 p-8 text-left shadow-program backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900 md:p-10">
           <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-gradient-to-br from-brand/25 via-brand/10 to-transparent blur-2xl dark:from-brand/30" />
           <div className="pointer-events-none absolute -bottom-20 -left-16 h-56 w-56 rounded-full bg-brand/5 blur-3xl dark:bg-brand/10" />

@@ -33,7 +33,7 @@ export function AdminOnboardingProgramsPage() {
       );
       setPrograms(data.programs);
     } catch {
-      setError("Could not load programs.");
+      setError("Could not load programmes.");
       setPrograms([]);
     }
   }
@@ -56,7 +56,7 @@ export function AdminOnboardingProgramsPage() {
       await load();
       navigate(`/admin/onboarding/${data.program.id}`);
     } catch {
-      setError("Could not create program.");
+      setError("Could not create programme.");
     } finally {
       setCreating(false);
     }
@@ -72,7 +72,7 @@ export function AdminOnboardingProgramsPage() {
 
   return (
     <div className="min-h-full">
-      <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
+      <main className="mx-auto max-w-7xl space-y-8 px-4 py-8">
         <div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
             <Link to="/admin/users" className="link-brand">
@@ -80,7 +80,7 @@ export function AdminOnboardingProgramsPage() {
             </Link>
           </div>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-800 dark:text-slate-100">
-            Onboarding programs
+            Onboarding programmes
           </h1>
         </div>
         {error && (
@@ -90,7 +90,7 @@ export function AdminOnboardingProgramsPage() {
         )}
 
         <section className="card-surface p-6 sm:p-8">
-          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">New program</h2>
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">New programme</h2>
           <form className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end" onSubmit={createProgram}>
             <div className="min-w-0 flex-1">
               <label htmlFor="new-title" className="block text-xs font-medium text-slate-600 dark:text-slate-300">
@@ -133,7 +133,7 @@ export function AdminOnboardingProgramsPage() {
 
         <section>
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            All programs
+            All programmes
           </h2>
           <ul className="mt-3 space-y-2">
             {programs.map((p) => (
@@ -168,7 +168,7 @@ export function AdminOnboardingProgramsPage() {
             ))}
           </ul>
           {programs.length === 0 && (
-            <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">No programs yet. Create one above.</p>
+            <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">No programmes yet. Create one above.</p>
           )}
         </section>
       </main>

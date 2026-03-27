@@ -11,7 +11,7 @@ export function DashboardPage() {
 
   return (
     <div className="min-h-0 flex-1 bg-transparent dark:bg-slate-950">
-      <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
+      <main className="mx-auto max-w-7xl space-y-6 px-4 py-8">
         <h1 className="text-md-headline font-medium tracking-tight text-slate-800 dark:text-slate-100 md:text-[2.125rem] md:leading-[2.75rem]">
           Dashboard
         </h1>
