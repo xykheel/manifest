@@ -1,6 +1,7 @@
 import { OnboardingEnrollmentStatus, OnboardingStepKind, Prisma } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
+import { getUserDepartments, publishedProgramWhereForUser } from "../lib/onboardingAccess";
 import { prisma } from "../lib/prisma";
 
 export const onboardingRouter = Router();
@@ -179,8 +180,10 @@ function buildReviewSteps(steps: ProgramStepPlayer[], snapshots: StepSnapshots) 
 
 onboardingRouter.get("/programs", async (req, res) => {
   const userId = req.user!.sub;
+  const userDepartments = await getUserDepartments(userId);
+  const visibility = publishedProgramWhereForUser(userDepartments);
   const programs = await prisma.onboardingProgram.findMany({
-    where: { published: true },
+    where: { published: true, ...visibility },
     orderBy: { updatedAt: "desc" },
     include: {
       steps: { select: { id: true } },
@@ -208,8 +211,10 @@ onboardingRouter.get("/programs", async (req, res) => {
 onboardingRouter.get("/programs/:programId", async (req, res) => {
   const userId = req.user!.sub;
   const programId = req.params.programId;
+  const userDepartments = await getUserDepartments(userId);
+  const visibility = publishedProgramWhereForUser(userDepartments);
   const program = await prisma.onboardingProgram.findFirst({
-    where: { id: programId, published: true },
+    where: { id: programId, published: true, ...visibility },
     include: {
       steps: { orderBy: { sortOrder: "asc" }, select: { id: true, sortOrder: true, kind: true, title: true } },
       enrollments: { where: { userId }, take: 1 },
@@ -242,8 +247,10 @@ onboardingRouter.get("/programs/:programId", async (req, res) => {
 onboardingRouter.post("/programs/:programId/start", async (req, res) => {
   const userId = req.user!.sub;
   const programId = req.params.programId;
+  const userDepartments = await getUserDepartments(userId);
+  const visibility = publishedProgramWhereForUser(userDepartments);
   const program = await prisma.onboardingProgram.findFirst({
-    where: { id: programId, published: true },
+    where: { id: programId, published: true, ...visibility },
   });
   if (!program) {
     res.status(404).json({ error: "Program not found" });
@@ -281,8 +288,10 @@ onboardingRouter.post("/programs/:programId/start", async (req, res) => {
 onboardingRouter.get("/programs/:programId/player", async (req, res) => {
   const userId = req.user!.sub;
   const programId = req.params.programId;
+  const userDepartments = await getUserDepartments(userId);
+  const visibility = publishedProgramWhereForUser(userDepartments);
   const program = await prisma.onboardingProgram.findFirst({
-    where: { id: programId, published: true },
+    where: { id: programId, published: true, ...visibility },
     include: {
       steps: { orderBy: { sortOrder: "asc" }, include: stepIncludePlayer },
       enrollments: { where: { userId }, take: 1 },
@@ -443,8 +452,10 @@ onboardingRouter.post("/programs/:programId/complete-step", async (req, res) => 
     res.status(400).json({ error: "Invalid body" });
     return;
   }
+  const userDepartments = await getUserDepartments(userId);
+  const visibility = publishedProgramWhereForUser(userDepartments);
   const program = await prisma.onboardingProgram.findFirst({
-    where: { id: programId, published: true },
+    where: { id: programId, published: true, ...visibility },
     include: {
       steps: { orderBy: { sortOrder: "asc" }, include: stepIncludePlayer },
     },

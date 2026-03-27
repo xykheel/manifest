@@ -1,4 +1,4 @@
-import { AuthProvider, UserRole as DbUserRole } from "@prisma/client";
+import { AuthProvider, Department, UserRole as DbUserRole } from "@prisma/client";
 import { UserRole } from "@manifest/shared";
 import { hash } from "bcryptjs";
 import { Router } from "express";
@@ -17,18 +17,34 @@ const userListSelect = {
   updatedAt: true,
 } as const;
 
+function serializeUser(
+  u: {
+    departments: { department: Department }[];
+  } & Record<string, unknown>,
+) {
+  const { departments: deptMemberships, ...rest } = u;
+  return {
+    ...rest,
+    departments: deptMemberships.map((d) => d.department),
+  };
+}
+
 adminUsersRouter.get("/users", async (_req, res) => {
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
-    select: userListSelect,
+    select: {
+      ...userListSelect,
+      departments: { select: { department: true } },
+    },
   });
-  res.json({ users });
+  res.json({ users: users.map(serializeUser) });
 });
 
 const createLocalUserSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, "Password must be at least 8 characters"),
   role: z.enum([UserRole.ADMIN, UserRole.USER]).optional(),
+  departments: z.array(z.nativeEnum(Department)).optional(),
 });
 
 adminUsersRouter.post("/users", async (req, res) => {
@@ -47,10 +63,20 @@ adminUsersRouter.post("/users", async (req, res) => {
         passwordHash,
         role,
         authProvider: AuthProvider.LOCAL,
+        ...(parsed.data.departments?.length
+          ? {
+              departments: {
+                create: parsed.data.departments.map((department) => ({ department })),
+              },
+            }
+          : {}),
       },
-      select: userListSelect,
+      select: {
+        ...userListSelect,
+        departments: { select: { department: true } },
+      },
     });
-    res.status(201).json({ user });
+    res.status(201).json({ user: serializeUser(user) });
   } catch (e) {
     const code = e && typeof e === "object" && "code" in e ? String((e as { code: string }).code) : "";
     if (code === "P2002") {
@@ -61,9 +87,14 @@ adminUsersRouter.post("/users", async (req, res) => {
   }
 });
 
-const patchUserSchema = z.object({
-  role: z.enum([UserRole.ADMIN, UserRole.USER]),
-});
+const patchUserSchema = z
+  .object({
+    role: z.enum([UserRole.ADMIN, UserRole.USER]).optional(),
+    departments: z.array(z.nativeEnum(Department)).optional(),
+  })
+  .refine((b) => b.role !== undefined || b.departments !== undefined, {
+    message: "Provide role and/or departments",
+  });
 
 adminUsersRouter.patch("/users/:userId", async (req, res) => {
   const parsed = patchUserSchema.safeParse(req.body);
@@ -72,8 +103,7 @@ adminUsersRouter.patch("/users/:userId", async (req, res) => {
     return;
   }
   const targetId = req.params.userId;
-  const actorId = req.user!.sub;
-  const newRole = parsed.data.role as DbUserRole;
+  const newRole = parsed.data.role as unknown as DbUserRole | undefined;
 
   const target = await prisma.user.findUnique({
     where: { id: targetId },
@@ -84,7 +114,7 @@ adminUsersRouter.patch("/users/:userId", async (req, res) => {
     return;
   }
 
-  if (target.role === DbUserRole.ADMIN && newRole === DbUserRole.USER) {
+  if (newRole !== undefined && target.role === DbUserRole.ADMIN && newRole === DbUserRole.USER) {
     const adminCount = await prisma.user.count({ where: { role: DbUserRole.ADMIN } });
     if (adminCount <= 1) {
       res.status(400).json({ error: "Cannot remove the last administrator" });
@@ -92,10 +122,26 @@ adminUsersRouter.patch("/users/:userId", async (req, res) => {
     }
   }
 
-  const user = await prisma.user.update({
-    where: { id: targetId },
-    data: { role: newRole },
-    select: userListSelect,
+  await prisma.$transaction(async (tx) => {
+    if (newRole !== undefined) {
+      await tx.user.update({ where: { id: targetId }, data: { role: newRole } });
+    }
+    if (parsed.data.departments !== undefined) {
+      await tx.userDepartment.deleteMany({ where: { userId: targetId } });
+      if (parsed.data.departments.length > 0) {
+        await tx.userDepartment.createMany({
+          data: parsed.data.departments.map((department) => ({ userId: targetId, department })),
+        });
+      }
+    }
   });
-  res.json({ user });
+
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: targetId },
+    select: {
+      ...userListSelect,
+      departments: { select: { department: true } },
+    },
+  });
+  res.json({ user: serializeUser(user) });
 });

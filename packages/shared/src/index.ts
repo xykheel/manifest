@@ -28,3 +28,10 @@ export interface SsoConfigResponse {
 }
 
 export const REFRESH_COOKIE_NAME = "refresh_token";
+
+/** Full account payload from GET /api/me (JWT fields plus server data). */
+export type MeUser = JwtAccessPayload & {
+  departments: import("./departments").Department[];
+};
+
+export * from "./departments";

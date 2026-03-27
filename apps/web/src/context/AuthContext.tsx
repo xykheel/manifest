@@ -1,13 +1,43 @@
-import type { JwtAccessPayload } from "@manifest/shared";
+import type { JwtAccessPayload, MeUser } from "@manifest/shared";
 import axios from "axios";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { api, baseURL, setAuthFailureHandler } from "../lib/api";
 import { decodeAccessToken } from "../lib/jwt";
 import { tokenStore } from "../lib/tokenStore";
 
+function meFromJwt(jwt: JwtAccessPayload, departments: MeUser["departments"] = []): MeUser {
+  return {
+    sub: jwt.sub,
+    email: jwt.email,
+    role: jwt.role,
+    authProvider: jwt.authProvider,
+    iat: jwt.iat,
+    exp: jwt.exp,
+    departments,
+  };
+}
+
+async function fetchMeIntoSetter(setUser: Dispatch<SetStateAction<MeUser | null>>) {
+  try {
+    const { data } = await api.get<{ user: MeUser }>("/api/me");
+    setUser(data.user);
+  } catch {
+    /* keep JWT-derived user; departments may stay empty */
+  }
+}
+
 type AuthContextValue = {
-  user: JwtAccessPayload | null;
+  user: MeUser | null;
   isAuthenticated: boolean;
   setSession: (accessToken: string) => void;
   logout: () => Promise<void>;
@@ -18,12 +48,14 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const [user, setUser] = useState<JwtAccessPayload | null>(null);
+  const [user, setUser] = useState<MeUser | null>(null);
   const [hydrationDone, setHydrationDone] = useState(false);
 
   const setSession = useCallback((accessToken: string) => {
     tokenStore.set(accessToken);
-    setUser(decodeAccessToken(accessToken));
+    const decoded = decodeAccessToken(accessToken);
+    setUser(meFromJwt(decoded, []));
+    void fetchMeIntoSetter(setUser);
   }, []);
 
   const logout = useCallback(async () => {
@@ -52,7 +84,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const existing = tokenStore.get();
         if (existing) {
           try {
-            setUser(decodeAccessToken(existing));
+            setUser(meFromJwt(decodeAccessToken(existing), []));
+            void fetchMeIntoSetter(setUser);
           } catch {
             tokenStore.set(null);
           }
@@ -66,14 +99,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           {},
           { withCredentials: true },
         );
-        setSession(data.accessToken);
+        tokenStore.set(data.accessToken);
+        const decoded = decodeAccessToken(data.accessToken);
+        setUser(meFromJwt(decoded, []));
+        void fetchMeIntoSetter(setUser);
       } catch {
         tokenStore.set(null);
       } finally {
         setHydrationDone(true);
       }
     })();
-  }, [setSession]);
+  }, []);
 
   const value = useMemo(
     () => ({

@@ -1,3 +1,8 @@
+import {
+  ALL_DEPARTMENTS,
+  type Department,
+  DEPARTMENT_LABELS,
+} from "@manifest/shared";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../lib/api";
@@ -25,6 +30,7 @@ type ProgramDetail = {
   title: string;
   description: string | null;
   published: boolean;
+  department: Department;
   steps: StepRow[];
 };
 
@@ -174,6 +180,7 @@ export function AdminProgramEditorPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editPublished, setEditPublished] = useState(false);
+  const [editDepartment, setEditDepartment] = useState<Department>("OTHER");
 
   const [lessonTitle, setLessonTitle] = useState("");
   const [lessonContent, setLessonContent] = useState("");
@@ -203,6 +210,7 @@ export function AdminProgramEditorPage() {
       setEditTitle(data.program.title);
       setEditDescription(data.program.description ?? "");
       setEditPublished(data.program.published);
+      setEditDepartment(data.program.department);
     } catch {
       setError("Program not found or inaccessible.");
       setProgram(null);
@@ -293,6 +301,7 @@ export function AdminProgramEditorPage() {
         title: editTitle.trim(),
         description: editDescription.trim() || null,
         published: editPublished,
+        department: editDepartment,
       });
       await load();
     } catch {
@@ -469,13 +478,29 @@ export function AdminProgramEditorPage() {
               className="input-field mt-1"
             />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+              Department (who can see this programme when published)
+            </label>
+            <select
+              value={editDepartment}
+              onChange={(e) => setEditDepartment(e.target.value as Department)}
+              className="input-field mt-1 max-w-md"
+            >
+              {ALL_DEPARTMENTS.map((d) => (
+                <option key={d} value={d}>
+                  {DEPARTMENT_LABELS[d]}
+                </option>
+              ))}
+            </select>
+          </div>
           <label className="flex items-center gap-2 text-sm text-slate-800 dark:text-slate-200">
             <input
               type="checkbox"
               checked={editPublished}
               onChange={(e) => setEditPublished(e.target.checked)}
             />
-            Published (visible to users)
+            Published (visible to users in this department, or anyone in System Administrator)
           </label>
           <button
             type="submit"

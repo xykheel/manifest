@@ -1,4 +1,4 @@
-import { OnboardingStepKind } from "@prisma/client";
+import { Department, OnboardingStepKind } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma";
@@ -9,6 +9,7 @@ const createProgramSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional().nullable(),
   published: z.boolean().optional(),
+  department: z.nativeEnum(Department).optional(),
 });
 
 const patchProgramSchema = createProgramSchema.partial();
@@ -72,6 +73,7 @@ adminOnboardingRouter.get("/programs", async (_req, res) => {
       title: p.title,
       description: p.description,
       published: p.published,
+      department: p.department,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
       stepCount: p._count.steps,
@@ -91,6 +93,7 @@ adminOnboardingRouter.post("/programs", async (req, res) => {
       title: parsed.data.title,
       description: parsed.data.description ?? undefined,
       published: parsed.data.published ?? false,
+      department: parsed.data.department ?? Department.OTHER,
     },
   });
   res.status(201).json({ program });
@@ -127,6 +130,7 @@ adminOnboardingRouter.patch("/programs/:programId", async (req, res) => {
         ...(data.title !== undefined && { title: data.title }),
         ...(data.description !== undefined && { description: data.description }),
         ...(data.published !== undefined && { published: data.published }),
+        ...(data.department !== undefined && { department: data.department }),
       },
     });
     res.json({ program });
