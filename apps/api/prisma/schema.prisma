@@ -31,6 +31,8 @@ enum Department {
 model User {
   id           String        @id @default(uuid()) @db.Uuid
   email        String        @unique
+  firstName    String?
+  lastName     String?
   passwordHash String?
   role         UserRole      @default(USER)
   authProvider AuthProvider  @default(LOCAL)

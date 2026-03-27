@@ -112,6 +112,7 @@ docker compose up --build -d
 
 - The API container runs `prisma migrate deploy` and `prisma db seed` on startup, then the dev server with hot reload.  
 - Source is bind-mounted into the API and web containers; startup runs `pnpm install` (and shared build / `prisma generate` for the API) so `node_modules` works with anonymous volumes.  
+- The web dev server **proxies `/api` to the API** (`VITE_DEV_PROXY_TARGET`, defaulting to `http://api:3001` in Compose). The SPA therefore talks to `http://localhost:5173/api/...`, which keeps **refresh `httpOnly` cookies same-origin**. Direct `fetch` to `localhost:3001` is cross-site on some browsers (e.g. Firefox) and those cookies may not attach—symptom: `POST /api/auth/refresh` **401** with **no `Cookie` header**.  
 - After **dependency changes**, rebuild or restart so installs run again.  
 
 ### Migrations (API container)
@@ -158,12 +159,17 @@ docker compose -f docker-compose.prod.yml --env-file .env up --build
 
 SSO is **disabled** if either `ENTRA_TENANT_ID` or `ENTRA_CLIENT_ID` is empty. When **both** are set, the API advertises SSO and the login page shows **Sign in with Microsoft** alongside email/password.
 
+Put Entra variables in **`apps/api/.env`** (not only the web app), then **restart the API process**. The browser loads `GET /api/auth/sso/config` (via `VITE_API_URL`) to decide whether to show Microsoft sign-in.
+
+**Docker Compose (dev):** `docker-compose.yml` loads the repo root `.env` for Postgres/JWT only. Entra values in **`apps/api/.env`** are picked up by the API because the project is bind-mounted and the dev server runs with cwd `apps/api`. Avoid defining `ENTRA_*` in Compose with `${VAR:-}` when the variable is only in `apps/api/.env` — that used to inject empty values and force `ssoEnabled: false`. For **production** Compose, put `ENTRA_*` in the same `.env` you pass to `--env-file` (typically the repo root file).
+
 1. Register an app in Microsoft Entra ID.  
-2. Under **Authentication**, add a **Single-page application** redirect URI (e.g. `http://localhost:5173/auth/callback` and your production URL).  
+2. Under **Authentication**, add **Single-page application** redirect URIs, including **`http://localhost:5173/auth/callback`** (and production equivalents) **and** the app’s login URL used after sign-out, e.g. **`http://localhost:5173/login`**, so Microsoft can return users there after **Log out**.  
 3. Enable **ID tokens**; the SPA posts the ID token to `POST /api/auth/sso/callback`.  
-4. Set in `.env` / `apps/api/.env`:  
+4. Set in **`apps/api/.env`**:  
    - `ENTRA_TENANT_ID` — directory (tenant) ID  
-   - `ENTRA_CLIENT_ID` — application (client) ID optional `ENTRA_CLIENT_SECRET` only if you use a confidential app **authorisation code** exchange instead of the default SPA ID-token flow.  
+   - `ENTRA_CLIENT_ID` — application (client) ID  
+   - `ENTRA_CLIENT_SECRET` — only if you use a confidential app **authorisation code** exchange instead of the default SPA ID-token flow.  
 5. Align API **`WEB_ORIGIN`** (or CORS) with the SPA origin.
 
 ---

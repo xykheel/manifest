@@ -1,7 +1,14 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { tokenStore } from "./tokenStore";
 
-const baseURL = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "http://localhost:3001";
+/**
+ * Dev: empty string → requests stay on the Vite origin; `vite.config` proxies `/api` to the backend so
+ * refresh cookies are first-party (required for browsers that treat localhost:5173→3001 as cross-site).
+ * Prod: set `VITE_API_URL` if the API is on another origin; omit or leave empty if nginx (or similar) serves `/api` on the same host.
+ */
+const baseURL = import.meta.env.DEV
+  ? ""
+  : import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
 
 export const api = axios.create({
   baseURL,

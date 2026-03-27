@@ -1,7 +1,9 @@
-import { DEPARTMENT_LABELS } from "@manifest/shared";
+import { AuthProvider as AuthProviderEnum, DEPARTMENT_LABELS, type MeUser } from "@manifest/shared";
+import { useMsal } from "@azure/msal-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useSso } from "../context/SsoContext";
 
 function emailInitials(email: string): string {
   const local = email.split("@")[0] ?? "?";
@@ -14,8 +16,57 @@ function emailInitials(email: string): string {
   return single.slice(0, 2).toUpperCase() || "?";
 }
 
+function profileInitials(user: MeUser): string {
+  const f = user.firstName?.trim();
+  const l = user.lastName?.trim();
+  if (f && l) return (f[0] + l[0]).toUpperCase();
+  if (f && f.length >= 2) return f.slice(0, 2).toUpperCase();
+  if (f) return (f[0] + (f[1] ?? f[0])).toUpperCase();
+  return emailInitials(user.email);
+}
+
+function greetingFirstName(user: MeUser): string {
+  const f = user.firstName?.trim();
+  if (f) return f;
+  return "Member";
+}
+
+function EntraLogoutButton({
+  logout,
+}: {
+  logout: (options?: { skipNavigate?: boolean }) => Promise<void>;
+}) {
+  const { instance } = useMsal();
+
+  async function onLogout() {
+    await logout({ skipNavigate: true });
+    try {
+      await instance.logoutRedirect({
+        postLogoutRedirectUri: `${window.location.origin}/login`,
+      });
+    } catch {
+      for (const account of instance.getAllAccounts()) {
+        instance.removeAccount(account);
+      }
+      window.location.assign(`${window.location.origin}/login`);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      className="btn-secondary mt-3 flex w-full items-center justify-center py-3 text-sm font-medium sm:py-2.5"
+      onClick={() => void onLogout()}
+    >
+      Log out
+    </button>
+  );
+}
+
 export function AccountMenu() {
   const { user, logout } = useAuth();
+  const { ssoEnabled } = useSso();
   const containerRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const location = useLocation();
@@ -45,7 +96,8 @@ export function AccountMenu() {
 
   if (!user) return null;
 
-  const initials = emailInitials(user.email);
+  const initials = profileInitials(user);
+  const firstName = greetingFirstName(user);
 
   return (
     <div ref={containerRef} className="relative z-[100]">
@@ -72,16 +124,12 @@ export function AccountMenu() {
               Account
             </p>
 
+            <p className="relative mt-4 text-lg font-semibold tracking-tight text-slate-800 dark:text-slate-100">
+              {firstName}
+            </p>
+
             <div className="relative mt-4 space-y-3 rounded-2xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-600 dark:bg-slate-800/80">
               <dl className="space-y-3 text-sm">
-                <div>
-                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Email
-                  </dt>
-                  <dd className="mt-0.5 break-all font-medium text-slate-800 dark:text-slate-100">
-                    {user.email}
-                  </dd>
-                </div>
                 <div>
                   <dt className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Role
@@ -123,14 +171,18 @@ export function AccountMenu() {
                   Open your learning programmes.
                 </span>
               </Link>
-              <button
-                type="button"
-                role="menuitem"
-                className="btn-secondary mt-3 flex w-full items-center justify-center py-3 text-sm font-medium sm:py-2.5"
-                onClick={() => void logout()}
-              >
-                Log out
-              </button>
+              {ssoEnabled && user.authProvider === AuthProviderEnum.ENTRA_ID ? (
+                <EntraLogoutButton logout={logout} />
+              ) : (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="btn-secondary mt-3 flex w-full items-center justify-center py-3 text-sm font-medium sm:py-2.5"
+                  onClick={() => void logout()}
+                >
+                  Log out
+                </button>
+              )}
             </div>
           </div>
         </div>

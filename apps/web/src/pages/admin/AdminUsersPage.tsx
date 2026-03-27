@@ -9,6 +9,8 @@ type AuthProvider = "LOCAL" | "ENTRA_ID";
 type AdminUserRow = {
   id: string;
   email: string;
+  firstName: string | null;
+  lastName: string | null;
   role: "ADMIN" | "USER";
   authProvider: AuthProvider;
   entraId: string | null;
@@ -30,6 +32,41 @@ function departmentsSummaryLine(depts: Department[]): string {
   return `${labels.slice(0, 2).join(", ")} +${labels.length - 2} more`;
 }
 
+function IconPencil({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.772.772-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"
+      />
+    </svg>
+  );
+}
+
+function IconFloppyDisk({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M17 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V7l-4-4Zm-8 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3ZM6 6h8v4H6V6Z" />
+    </svg>
+  );
+}
+
+function IconSpinner({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+      <path
+        className="opacity-90"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      />
+    </svg>
+  );
+}
+
 export function AdminUsersPage() {
   const { user: me } = useAuth();
   const [users, setUsers] = useState<AdminUserRow[] | null>(null);
@@ -38,12 +75,17 @@ export function AdminUsersPage() {
 
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
   const [newRole, setNewRole] = useState<"USER" | "ADMIN">("USER");
   const [newDepartments, setNewDepartments] = useState<Department[]>([]);
   const [creating, setCreating] = useState(false);
 
   const [roleDraft, setRoleDraft] = useState<Record<string, "ADMIN" | "USER">>({});
   const [departmentDraft, setDepartmentDraft] = useState<Record<string, Department[]>>({});
+  const [nameDraft, setNameDraft] = useState<Record<string, { firstName: string; lastName: string }>>(
+    {},
+  );
 
   const [deptModalUserId, setDeptModalUserId] = useState<string | null>(null);
   const [deptModalSelection, setDeptModalSelection] = useState<Department[]>([]);
@@ -55,12 +97,15 @@ export function AdminUsersPage() {
       setUsers(data.users);
       const roles: Record<string, "ADMIN" | "USER"> = {};
       const depts: Record<string, Department[]> = {};
+      const names: Record<string, { firstName: string; lastName: string }> = {};
       for (const u of data.users) {
         roles[u.id] = u.role;
         depts[u.id] = [...u.departments];
+        names[u.id] = { firstName: u.firstName ?? "", lastName: u.lastName ?? "" };
       }
       setRoleDraft(roles);
       setDepartmentDraft(depts);
+      setNameDraft(names);
     } catch {
       setError("Could not load users.");
       setUsers([]);
@@ -84,10 +129,14 @@ export function AdminUsersPage() {
         email: newEmail.trim().toLowerCase(),
         password: newPassword,
         role: newRole,
+        ...(newFirstName.trim() ? { firstName: newFirstName.trim() } : {}),
+        ...(newLastName.trim() ? { lastName: newLastName.trim() } : {}),
         ...(newDepartments.length > 0 ? { departments: newDepartments } : {}),
       });
       setNewEmail("");
       setNewPassword("");
+      setNewFirstName("");
+      setNewLastName("");
       setNewRole("USER");
       setNewDepartments([]);
       await load();
@@ -99,20 +148,38 @@ export function AdminUsersPage() {
     }
   }
 
+  function normaliseNameField(raw: string): string | null {
+    const t = raw.trim();
+    return t.length > 0 ? t : null;
+  }
+
   async function saveUser(userId: string) {
     const u = users?.find((x) => x.id === userId);
     if (!u) return;
     const role = roleDraft[userId] ?? u.role;
     const departments = departmentDraft[userId] ?? u.departments;
+    const nm = nameDraft[userId] ?? { firstName: u.firstName ?? "", lastName: u.lastName ?? "" };
+    const nextFn = normaliseNameField(nm.firstName);
+    const nextLn = normaliseNameField(nm.lastName);
     const roleChanged = role !== u.role;
     const deptChanged = !deptsEqual(departments, u.departments);
-    if (!roleChanged && !deptChanged) return;
+    const nameChanged = nextFn !== u.firstName || nextLn !== u.lastName;
+    if (!roleChanged && !deptChanged && !nameChanged) return;
     setSavingId(userId);
     setError(null);
     try {
-      const body: { role?: "ADMIN" | "USER"; departments?: Department[] } = {};
+      const body: {
+        role?: "ADMIN" | "USER";
+        departments?: Department[];
+        firstName?: string | null;
+        lastName?: string | null;
+      } = {};
       if (roleChanged) body.role = role;
       if (deptChanged) body.departments = departments;
+      if (nameChanged) {
+        body.firstName = nextFn;
+        body.lastName = nextLn;
+      }
       await api.patch(`/api/admin/users/${userId}`, body);
       await load();
     } catch (err: unknown) {
@@ -217,6 +284,30 @@ export function AdminUsersPage() {
                   autoComplete="new-password"
                 />
               </div>
+              <div className="min-w-[140px] flex-1 sm:max-w-[10rem]">
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                  First name
+                </label>
+                <input
+                  type="text"
+                  value={newFirstName}
+                  onChange={(e) => setNewFirstName(e.target.value)}
+                  className="input-field mt-1"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="min-w-[140px] flex-1 sm:max-w-[10rem]">
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                  Last name
+                </label>
+                <input
+                  type="text"
+                  value={newLastName}
+                  onChange={(e) => setNewLastName(e.target.value)}
+                  className="input-field mt-1"
+                  autoComplete="off"
+                />
+              </div>
               <div className="w-full sm:w-40">
                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">Role</label>
                 <select
@@ -258,10 +349,12 @@ export function AdminUsersPage() {
             </h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
+            <table className="w-full min-w-[960px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200/80 bg-slate-50/80 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-700/80 dark:bg-slate-800/60 dark:text-slate-400">
                   <th className="px-6 py-3">Email</th>
+                  <th className="px-6 py-3">First name</th>
+                  <th className="px-6 py-3">Last name</th>
                   <th className="px-6 py-3">Sign-in</th>
                   <th className="px-6 py-3">Entra object ID</th>
                   <th className="px-6 py-3">Role</th>
@@ -273,7 +366,12 @@ export function AdminUsersPage() {
                 {users.map((u) => {
                   const draftRole = roleDraft[u.id] ?? u.role;
                   const draftDepts = departmentDraft[u.id] ?? u.departments;
-                  const changed = draftRole !== u.role || !deptsEqual(draftDepts, u.departments);
+                  const draftNm = nameDraft[u.id] ?? { firstName: u.firstName ?? "", lastName: u.lastName ?? "" };
+                  const nextFn = normaliseNameField(draftNm.firstName);
+                  const nextLn = normaliseNameField(draftNm.lastName);
+                  const nameChanged = nextFn !== u.firstName || nextLn !== u.lastName;
+                  const changed =
+                    draftRole !== u.role || !deptsEqual(draftDepts, u.departments) || nameChanged;
                   return (
                     <tr
                       key={u.id}
@@ -284,6 +382,40 @@ export function AdminUsersPage() {
                         {me?.sub === u.id && (
                           <span className="ml-2 text-xs font-medium text-brand">(you)</span>
                         )}
+                      </td>
+                      <td className="px-6 py-4 align-top">
+                        <input
+                          type="text"
+                          value={nameDraft[u.id]?.firstName ?? ""}
+                          onChange={(e) =>
+                            setNameDraft((d) => ({
+                              ...d,
+                              [u.id]: {
+                                firstName: e.target.value,
+                                lastName: d[u.id]?.lastName ?? u.lastName ?? "",
+                              },
+                            }))
+                          }
+                          className="input-field max-w-[10rem] py-1.5 text-xs"
+                          autoComplete="off"
+                        />
+                      </td>
+                      <td className="px-6 py-4 align-top">
+                        <input
+                          type="text"
+                          value={nameDraft[u.id]?.lastName ?? ""}
+                          onChange={(e) =>
+                            setNameDraft((d) => ({
+                              ...d,
+                              [u.id]: {
+                                firstName: d[u.id]?.firstName ?? u.firstName ?? "",
+                                lastName: e.target.value,
+                              },
+                            }))
+                          }
+                          className="input-field max-w-[10rem] py-1.5 text-xs"
+                          autoComplete="off"
+                        />
                       </td>
                       <td className="px-6 py-4 align-top text-slate-600 dark:text-slate-300">
                         {signInLabel(u.authProvider)}
@@ -315,23 +447,36 @@ export function AdminUsersPage() {
                           <option value="ADMIN">Administrator</option>
                         </select>
                       </td>
-                      <td className="px-6 py-4 align-middle">
+                      <td className="px-6 py-4 align-top">
                         <p className="max-w-[16rem] text-xs leading-snug text-slate-600 dark:text-slate-300">
                           {departmentsSummaryLine(draftDepts)}
                         </p>
                       </td>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="flex flex-wrap items-center justify-end gap-2">
-                          <button type="button" onClick={() => openDeptModal(u)} className="btn-secondary-sm">
-                            Edit
+                      <td className="px-6 py-4 align-top text-right">
+                        <div className="ml-auto grid w-full max-w-[10.5rem] grid-cols-2 gap-4">
+                          <button
+                            type="button"
+                            onClick={() => openDeptModal(u)}
+                            className="btn-secondary-sm inline-flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center px-0 py-0"
+                            aria-label={`Edit departments for ${u.email}`}
+                          >
+                            <IconPencil className="h-6 w-6" />
                           </button>
                           <button
                             type="button"
                             disabled={savingId === u.id || !changed}
                             onClick={() => void saveUser(u.id)}
-                            className="btn-primary-sm shrink-0 disabled:opacity-40"
+                            className="btn-primary-sm inline-flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center px-0 py-0 disabled:opacity-40"
+                            aria-label={
+                              savingId === u.id ? `Saving changes for ${u.email}` : `Save changes for ${u.email}`
+                            }
+                            aria-busy={savingId === u.id}
                           >
-                            {savingId === u.id ? "Saving…" : "Save"}
+                            {savingId === u.id ? (
+                              <IconSpinner className="h-6 w-6 animate-spin" />
+                            ) : (
+                              <IconFloppyDisk className="h-6 w-6" />
+                            )}
                           </button>
                         </div>
                       </td>
@@ -372,7 +517,11 @@ export function AdminUsersPage() {
             >
               Departments
             </h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{deptModalUser.email}</p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+              {[deptModalUser.firstName, deptModalUser.lastName].filter(Boolean).join(" ") ||
+                "—"}{" "}
+              · {deptModalUser.email}
+            </p>
             <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
               Tick the departments this person belongs to. Use <strong>Save</strong> on the row to persist
               changes to the server.

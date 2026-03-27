@@ -1,13 +1,14 @@
-import { REFRESH_COOKIE_NAME, UserRole } from "@manifest/shared";
+import { REFRESH_COOKIE_NAME } from "@manifest/shared";
 import { AuthProvider, Prisma, UserRole as DbUserRole } from "@prisma/client";
 import { compare } from "bcryptjs";
 import { Router } from "express";
 import { z } from "zod";
 import {
   acquireTokenByAuthCode,
-  fetchOidAndEmailFromIdTokenClaims,
+  fetchProfileFromIdTokenClaims,
   verifyEntraIdToken,
 } from "../lib/entra";
+import { accessTokenPayloadFromUser } from "../lib/accessTokenFromUser";
 import { env } from "../lib/env";
 import { prisma } from "../lib/prisma";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../lib/tokens";
@@ -32,20 +33,23 @@ const msFromExpiresIn = (expr: string): number => {
 function setRefreshCookie(res: import("express").Response, refreshToken: string): void {
   res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
     httpOnly: true,
-    secure: env.nodeEnv === "production",
+    secure: env.refreshCookieSecure,
     sameSite: "lax",
-    path: "/api/auth",
+    /** Host-wide so `/api/auth/*` and any proxy quirks still send the cookie to `/api/auth/refresh`. */
+    path: "/",
     maxAge: msFromExpiresIn(env.jwtRefreshExpiresIn),
   });
 }
 
 function clearRefreshCookie(res: import("express").Response): void {
-  res.clearCookie(REFRESH_COOKIE_NAME, {
+  const opts = {
     httpOnly: true,
-    secure: env.nodeEnv === "production",
-    sameSite: "lax",
-    path: "/api/auth",
-  });
+    secure: env.refreshCookieSecure,
+    sameSite: "lax" as const,
+  };
+  // Clear current path and legacy path (older deploys used path /api/auth only).
+  res.clearCookie(REFRESH_COOKIE_NAME, { ...opts, path: "/" });
+  res.clearCookie(REFRESH_COOKIE_NAME, { ...opts, path: "/api/auth" });
 }
 
 router.post("/login", async (req, res) => {
@@ -55,7 +59,18 @@ router.post("/login", async (req, res) => {
     return;
   }
   const { email, password } = parsed.data;
-  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      passwordHash: true,
+      role: true,
+      authProvider: true,
+    },
+  });
   if (!user?.passwordHash) {
     res.status(401).json({ error: "Invalid email or password" });
     return;
@@ -65,12 +80,16 @@ router.post("/login", async (req, res) => {
     res.status(401).json({ error: "Invalid email or password" });
     return;
   }
-  const accessToken = signAccessToken({
-    sub: user.id,
-    email: user.email,
-    role: user.role as UserRole,
-    authProvider: user.authProvider as import("@manifest/shared").AuthProvider,
-  });
+  const accessToken = signAccessToken(
+    accessTokenPayloadFromUser({
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      authProvider: user.authProvider,
+    }),
+  );
   const refreshToken = signRefreshToken(user.id);
   setRefreshCookie(res, refreshToken);
   res.json({ accessToken });
@@ -84,18 +103,32 @@ router.post("/refresh", async (req, res) => {
   }
   try {
     const { sub } = verifyRefreshToken(token);
-    const user = await prisma.user.findUnique({ where: { id: sub } });
+    const user = await prisma.user.findUnique({
+      where: { id: sub },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        authProvider: true,
+      },
+    });
     if (!user) {
       clearRefreshCookie(res);
       res.status(401).json({ error: "User not found" });
       return;
     }
-    const accessToken = signAccessToken({
-      sub: user.id,
-      email: user.email,
-      role: user.role as UserRole,
-      authProvider: user.authProvider as import("@manifest/shared").AuthProvider,
-    });
+    const accessToken = signAccessToken(
+      accessTokenPayloadFromUser({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        authProvider: user.authProvider,
+      }),
+    );
     res.json({ accessToken });
   } catch {
     clearRefreshCookie(res);
@@ -154,7 +187,15 @@ router.post("/sso/callback", async (req, res) => {
     }
 
     const payload = await verifyEntraIdToken(idToken);
-    const { oid, email } = await fetchOidAndEmailFromIdTokenClaims(payload);
+    const { oid, email, firstName, lastName } = fetchProfileFromIdTokenClaims(payload);
+
+    const nameUpdate =
+      firstName != null || lastName != null
+        ? {
+            ...(firstName != null ? { firstName } : {}),
+            ...(lastName != null ? { lastName } : {}),
+          }
+        : {};
 
     let user = await prisma.user.findUnique({ where: { entraId: oid } });
     if (!user) {
@@ -166,6 +207,7 @@ router.post("/sso/callback", async (req, res) => {
             entraId: oid,
             authProvider: AuthProvider.ENTRA_ID,
             passwordHash: null,
+            ...nameUpdate,
           },
         });
       } else {
@@ -177,6 +219,8 @@ router.post("/sso/callback", async (req, res) => {
               authProvider: AuthProvider.ENTRA_ID,
               passwordHash: null,
               role: DbUserRole.USER,
+              firstName,
+              lastName,
             },
           });
         } catch (e) {
@@ -187,19 +231,29 @@ router.post("/sso/callback", async (req, res) => {
           throw e;
         }
       }
-    } else if (user.email !== email) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { email },
-      });
+    } else {
+      const emailChanged = user.email !== email;
+      if (emailChanged || Object.keys(nameUpdate).length > 0) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            ...(emailChanged ? { email } : {}),
+            ...nameUpdate,
+          },
+        });
+      }
     }
 
-    const accessToken = signAccessToken({
-      sub: user.id,
-      email: user.email,
-      role: user.role as UserRole,
-      authProvider: user.authProvider as import("@manifest/shared").AuthProvider,
-    });
+    const accessToken = signAccessToken(
+      accessTokenPayloadFromUser({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        authProvider: user.authProvider,
+      }),
+    );
     const refreshToken = signRefreshToken(user.id);
     setRefreshCookie(res, refreshToken);
     res.json({ accessToken });

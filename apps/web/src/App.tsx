@@ -11,6 +11,7 @@ import { SsoProvider } from "./context/SsoContext";
 import { baseURL } from "./lib/api";
 import { createMsalInstance } from "./lib/msal";
 import { AuthCallbackPage } from "./pages/AuthCallback";
+import { AdminAnalyticsPage } from "./pages/admin/AdminAnalyticsPage";
 import { AdminOnboardingProgramsPage } from "./pages/admin/AdminOnboardingProgramsPage";
 import { AdminProgramEditorPage } from "./pages/admin/AdminProgramEditorPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
@@ -83,6 +84,7 @@ export default function App() {
               <Route path="/onboarding/:programId" element={<OnboardingPlayerPage />} />
               <Route element={<AdminRoute />}>
                 <Route path="/admin/users" element={<AdminUsersPage />} />
+                <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
                 <Route path="/admin/onboarding" element={<AdminOnboardingProgramsPage />} />
                 <Route path="/admin/onboarding/:programId" element={<AdminProgramEditorPage />} />
               </Route>
