@@ -129,6 +129,40 @@ html.dark #root {
   .lesson-rich-text-editor img {
     @apply my-3 max-h-[min(70vh,32rem)] max-w-full rounded-lg object-contain;
   }
+  /* TipTap ResizableNodeView — default handles have no intrinsic size */
+  .lesson-rich-text-editor [data-resize-wrapper] {
+    @apply max-w-full;
+  }
+  .lesson-rich-text-editor [data-resize-handle] {
+    z-index: 5;
+    box-sizing: border-box;
+    @apply border border-slate-600/90 bg-violet-500/90;
+  }
+  .lesson-rich-text-editor [data-resize-handle="bottom-right"],
+  .lesson-rich-text-editor [data-resize-handle="bottom-left"],
+  .lesson-rich-text-editor [data-resize-handle="top-right"],
+  .lesson-rich-text-editor [data-resize-handle="top-left"] {
+    width: 10px;
+    height: 10px;
+  }
+  .lesson-rich-text-editor [data-resize-handle="top"],
+  .lesson-rich-text-editor [data-resize-handle="bottom"] {
+    height: 6px;
+    cursor: ns-resize;
+  }
+  .lesson-rich-text-editor [data-resize-handle="left"],
+  .lesson-rich-text-editor [data-resize-handle="right"] {
+    width: 6px;
+    cursor: ew-resize;
+  }
+  .lesson-rich-text-editor [data-resize-handle="bottom-right"],
+  .lesson-rich-text-editor [data-resize-handle="top-left"] {
+    cursor: nwse-resize;
+  }
+  .lesson-rich-text-editor [data-resize-handle="bottom-left"],
+  .lesson-rich-text-editor [data-resize-handle="top-right"] {
+    cursor: nesw-resize;
+  }
   .lesson-rich-text-editor blockquote {
     @apply my-2 border-l-2 border-slate-300 pl-3 italic text-slate-600 dark:border-slate-600 dark:text-slate-400;
   }

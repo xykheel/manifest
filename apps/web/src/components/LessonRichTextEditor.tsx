@@ -177,6 +177,12 @@ export function LessonRichTextEditor({ value, onChange, editorKey, placeholder }
           HTMLAttributes: {
             class: "max-w-full h-auto rounded-lg",
           },
+          resize: {
+            enabled: true,
+            minWidth: 48,
+            minHeight: 32,
+            alwaysPreserveAspectRatio: true,
+          },
         }),
         Placeholder.configure({
           placeholder: placeholder ?? "Write the lesson…",

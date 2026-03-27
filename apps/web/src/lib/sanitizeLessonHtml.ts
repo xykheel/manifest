@@ -91,6 +91,14 @@ function safeHref(href: string): boolean {
   return isAllowedLessonLinkHref(href);
 }
 
+/** Positive pixel size for width/height attributes (TipTap resize). */
+function safeImgPxAttr(value: string | null): string | null {
+  if (value == null || !String(value).trim()) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 1 || n > 16000) return null;
+  return String(Math.round(n));
+}
+
 function filterTextAlignOnly(style: string | null): string | undefined {
   if (!style?.trim()) return undefined;
   const kept: string[] = [];
@@ -110,6 +118,8 @@ function cleanAttributes(el: Element, tag: string) {
   if (tag === "img") {
     const rawSrc = el.getAttribute("src");
     const rawAlt = el.getAttribute("alt");
+    const rawW = safeImgPxAttr(el.getAttribute("width"));
+    const rawH = safeImgPxAttr(el.getAttribute("height"));
     for (const attr of Array.from(el.attributes)) {
       el.removeAttribute(attr.name);
     }
@@ -118,6 +128,8 @@ function cleanAttributes(el: Element, tag: string) {
       if (rawAlt?.trim()) {
         el.setAttribute("alt", rawAlt.trim());
       }
+      if (rawW) el.setAttribute("width", rawW);
+      if (rawH) el.setAttribute("height", rawH);
       el.setAttribute("loading", "lazy");
       el.setAttribute("decoding", "async");
     }
