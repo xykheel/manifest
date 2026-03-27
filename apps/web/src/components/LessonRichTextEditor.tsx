@@ -5,7 +5,13 @@ import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useState } from "react";
 import { lessonDraftToEditorHtml } from "../lib/lessonContent";
-import { isAllowedLessonLinkHref, normalizeLessonLinkInput } from "../lib/sanitizeLessonHtml";
+import { LessonImage } from "../lib/tiptapLessonImage";
+import {
+  isAllowedLessonImageSrc,
+  isAllowedLessonLinkHref,
+  normalizeLessonImageUrlInput,
+  normalizeLessonLinkInput,
+} from "../lib/sanitizeLessonHtml";
 
 const ZOOM_STEPS = [75, 85, 90, 100, 110, 125, 150, 175] as const;
 
@@ -70,6 +76,18 @@ function IconLink({ className }: { className?: string }) {
   );
 }
 
+function IconImage({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+      />
+    </svg>
+  );
+}
+
 function applyLinkFromPrompt(editor: Editor) {
   const previous = editor.getAttributes("link").href as string | undefined;
   const raw = window.prompt(
@@ -91,6 +109,27 @@ function applyLinkFromPrompt(editor: Editor) {
   }
 
   editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
+}
+
+function applyImageFromPrompt(editor: Editor) {
+  const raw = window.prompt("Image URL (https or http)", "https://");
+  if (raw === null) return;
+  const trimmed = raw.trim();
+  if (!trimmed) return;
+
+  const src = normalizeLessonImageUrlInput(trimmed);
+  if (!isAllowedLessonImageSrc(src)) {
+    window.alert("Use an http(s) URL for images (remote images only).");
+    return;
+  }
+
+  const altReply = window.prompt("Optional description for screen readers (alt text)", "");
+  if (altReply === null) {
+    editor.chain().focus().setImage({ src }).run();
+    return;
+  }
+  const alt = altReply.trim();
+  editor.chain().focus().setImage({ src, ...(alt ? { alt } : {}) }).run();
 }
 
 const toolbarBtn =
@@ -131,6 +170,13 @@ export function LessonRichTextEditor({ value, onChange, editorKey, placeholder }
           defaultProtocol: "https",
           protocols: ["http", "https", "mailto"],
           validate: (href) => isAllowedLessonLinkHref(href),
+        }),
+        LessonImage.configure({
+          inline: false,
+          allowBase64: false,
+          HTMLAttributes: {
+            class: "max-w-full h-auto rounded-lg",
+          },
         }),
         Placeholder.configure({
           placeholder: placeholder ?? "Write the lesson…",
@@ -363,6 +409,16 @@ export function LessonRichTextEditor({ value, onChange, editorKey, placeholder }
           aria-label="Insert or edit link"
         >
           <IconLink className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onMouseDown={preventTipTapBlur}
+          onClick={() => applyImageFromPrompt(editor)}
+          className={editor.isActive("image") ? toolbarBtnActive : toolbarBtn}
+          title="Image from URL"
+          aria-label="Insert image from URL"
+        >
+          <IconImage className="h-4 w-4" />
         </button>
         <button
           type="button"

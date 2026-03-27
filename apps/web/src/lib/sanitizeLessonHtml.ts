@@ -26,6 +26,7 @@ const ALLOWED_TAGS = new Set([
   "hr",
   "a",
   "u",
+  "img",
 ]);
 
 /** Inline `style` is allowed only for these tags, and only `text-align` (TipTap TextAlign). */
@@ -51,6 +52,23 @@ const REMOVE_ENTIRELY = new Set([
 export function isAllowedLessonLinkHref(href: string): boolean {
   const t = href.trim().toLowerCase();
   return t.startsWith("http://") || t.startsWith("https://") || t.startsWith("mailto:");
+}
+
+/** Image `src` must be remote http(s) only (no data: or javascript:). */
+export function isAllowedLessonImageSrc(src: string): boolean {
+  const t = src.trim().toLowerCase();
+  return t.startsWith("http://") || t.startsWith("https://");
+}
+
+/** Normalises image URL input (https for bare hostnames). */
+export function normalizeLessonImageUrlInput(raw: string): string {
+  const t = raw.trim();
+  if (!t) return "";
+  const lower = t.toLowerCase();
+  if (lower.startsWith("http://") || lower.startsWith("https://")) {
+    return t;
+  }
+  return `https://${t.replace(/^\/+/, "")}`;
 }
 
 /**
@@ -89,6 +107,23 @@ function filterTextAlignOnly(style: string | null): string | undefined {
 }
 
 function cleanAttributes(el: Element, tag: string) {
+  if (tag === "img") {
+    const rawSrc = el.getAttribute("src");
+    const rawAlt = el.getAttribute("alt");
+    for (const attr of Array.from(el.attributes)) {
+      el.removeAttribute(attr.name);
+    }
+    if (rawSrc && isAllowedLessonImageSrc(rawSrc)) {
+      el.setAttribute("src", rawSrc);
+      if (rawAlt?.trim()) {
+        el.setAttribute("alt", rawAlt.trim());
+      }
+      el.setAttribute("loading", "lazy");
+      el.setAttribute("decoding", "async");
+    }
+    return;
+  }
+
   const allowAlignStyle = TAGS_ALLOW_STYLE_TEXT_ALIGN.has(tag);
   const priorStyle = allowAlignStyle ? el.getAttribute("style") : null;
 
@@ -160,6 +195,11 @@ function sanitizeTree(node: Node): void {
   }
 
   cleanAttributes(el, tag);
+
+  if (tag === "img" && !el.getAttribute("src")) {
+    detach(el);
+    return;
+  }
 
   for (const c of Array.from(el.childNodes)) {
     sanitizeTree(c);

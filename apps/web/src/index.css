@@ -126,6 +126,9 @@ html.dark #root {
   .lesson-rich-text-editor a {
     @apply break-words text-brand underline underline-offset-2 hover:text-brand-hover;
   }
+  .lesson-rich-text-editor img {
+    @apply my-3 max-h-[min(70vh,32rem)] max-w-full rounded-lg object-contain;
+  }
   .lesson-rich-text-editor blockquote {
     @apply my-2 border-l-2 border-slate-300 pl-3 italic text-slate-600 dark:border-slate-600 dark:text-slate-400;
   }
@@ -176,6 +179,9 @@ html.dark #root {
   }
   .lesson-content-html a {
     @apply break-words text-brand underline underline-offset-2 hover:text-brand-hover;
+  }
+  .lesson-content-html img {
+    @apply my-3 max-h-[min(70vh,32rem)] max-w-full rounded-lg object-contain;
   }
   .lesson-content-html blockquote {
     @apply my-3 border-l-2 border-slate-300 pl-3 italic text-slate-600 dark:border-slate-600 dark:text-slate-400;

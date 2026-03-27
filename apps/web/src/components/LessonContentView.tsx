@@ -7,7 +7,7 @@ type Props = {
 };
 
 /**
- * Renders lesson body: rich HTML (sanitised, including http(s) and mailto links) or legacy plain text with preserved line breaks.
+ * Renders lesson body: rich HTML (sanitised, including http(s) and mailto links, and remote http(s) images) or legacy plain text with preserved line breaks.
  */
 export function LessonContentView({ content, className = "" }: Props) {
   if (!content) return null;
