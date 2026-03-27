@@ -53,8 +53,9 @@ services:
       - |
         set -e
         pnpm install
+        # Regenerate client from mounted schema (anonymous node_modules volume can hold a stale client).
+        cd /app/apps/api && pnpm exec prisma generate --schema=prisma/schema.prisma
         pnpm --filter @manifest/shared build
-        pnpm --filter @manifest/api exec prisma generate
         cd /app/apps/api && pnpm exec prisma migrate deploy
         cd /app/apps/api && pnpm exec prisma db seed
         cd /app

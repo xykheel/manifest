@@ -5,7 +5,7 @@ import { api } from "../../lib/api";
 type OutlineStep = {
   id: string;
   sortOrder: number;
-  kind: "LESSON" | "QUIZ";
+  kind: "LESSON" | "QUIZ" | "SUMMARY";
   title: string;
   completed: boolean;
 };
@@ -16,6 +16,21 @@ type QuizStep = {
   kind: "QUIZ";
   title: string;
   questions: { id: string; prompt: string; options: { id: string; label: string }[] }[];
+};
+type ReviewQuizStep = QuizStep & { savedAnswers: Record<string, string> };
+type ReviewStep = LessonStep | ReviewQuizStep;
+
+type QuizSummaryPayload = {
+  correctCount: number;
+  questionCount: number;
+  overallPercent: number;
+  quizzes: { title: string; correct: number; total: number }[];
+};
+
+type SummaryStep = {
+  kind: "SUMMARY";
+  completionPercent: number;
+  quizSummary: QuizSummaryPayload | null;
 };
 
 type PlayerPayload = {
@@ -28,9 +43,54 @@ type PlayerPayload = {
     completedAt?: string | null;
   };
   stepsOutline: OutlineStep[];
-  currentStep: LessonStep | QuizStep | null;
+  currentStep: LessonStep | QuizStep | SummaryStep | null;
+  /** Present when the programme is completed — same figures as the pre-finish summary. */
+  completionSummary?: {
+    completionPercent: number;
+    quizSummary: QuizSummaryPayload | null;
+  };
+  reviewSteps?: ReviewStep[];
   completed: boolean;
 };
+
+function OnboardingResultsStats({
+  completionPercent,
+  quizSummary,
+}: {
+  completionPercent: number;
+  quizSummary: QuizSummaryPayload | null;
+}) {
+  return (
+    <>
+      <p className="mt-4 text-3xl font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+        {completionPercent}%{" "}
+        <span className="text-lg font-medium text-slate-600 dark:text-slate-300">complete</span>
+      </p>
+      {quizSummary && (
+        <div className="mt-8 space-y-6">
+          <h3 className="text-lg font-medium text-slate-800 dark:text-slate-100">Quiz scores</h3>
+          <p className="text-lg text-slate-600 dark:text-slate-300">
+            Overall: {quizSummary.correctCount} / {quizSummary.questionCount} correct ({quizSummary.overallPercent}%)
+          </p>
+          <ul className="space-y-3">
+            {quizSummary.quizzes.map((q, qi) => (
+              <li
+                key={`${q.title}-${qi}`}
+                className="rounded-xl border border-slate-200/90 bg-white px-4 py-3 dark:border-slate-600 dark:bg-slate-800/40"
+              >
+                <span className="font-medium text-slate-800 dark:text-slate-100">{q.title}</span>
+                <span className="mt-1 block text-base tabular-nums text-slate-600 dark:text-slate-300">
+                  {q.correct} / {q.total} correct{" "}
+                  {q.total > 0 ? `(${Math.round((q.correct / q.total) * 100)}%)` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+}
 
 export function OnboardingPlayerPage() {
   const { programId } = useParams<{ programId: string }>();
@@ -39,6 +99,7 @@ export function OnboardingPlayerPage() {
   const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const [reviewStepIndex, setReviewStepIndex] = useState(0);
 
   const load = useCallback(async () => {
     if (!programId) return;
@@ -47,6 +108,7 @@ export function OnboardingPlayerPage() {
       const { data: res } = await api.get<PlayerPayload>(`/api/onboarding/programs/${programId}/player`);
       setData(res);
       setQuizAnswers({});
+      setReviewStepIndex(0);
     } catch (err: unknown) {
       const ax = err as { response?: { status?: number; data?: { error?: string } } };
       if (ax.response?.status === 400 && ax.response?.data?.error === "Start the program first") {
@@ -80,9 +142,11 @@ export function OnboardingPlayerPage() {
     setError(null);
     try {
       const body =
-        data.currentStep.kind === "QUIZ"
-          ? { answers: quizAnswers }
-          : {};
+        data.currentStep.kind === "SUMMARY"
+          ? { finish: true as const }
+          : data.currentStep.kind === "QUIZ"
+            ? { answers: quizAnswers }
+            : {};
       const { data: res } = await api.post<{
         completedProgram: boolean;
         enrollment: { status: string; currentStepIndex: number; completedAt?: string | null };
@@ -152,7 +216,28 @@ export function OnboardingPlayerPage() {
     );
   }
 
-  const { program, stepsOutline, currentStep, completed } = data;
+  const { program, stepsOutline, currentStep, completed, reviewSteps, enrollment, completionSummary } = data;
+  const reviewList = completed && reviewSteps?.length ? reviewSteps : null;
+  const reviewSummaryFirst = stepsOutline[0]?.id === "__review_summary__";
+  const onReviewSummary =
+    Boolean(reviewList) && stepsOutline[reviewStepIndex]?.id === "__review_summary__";
+  const contentReviewIndex = reviewSummaryFirst ? reviewStepIndex - 1 : reviewStepIndex;
+  const activeReviewStep =
+    reviewList &&
+    !onReviewSummary &&
+    contentReviewIndex >= 0 &&
+    contentReviewIndex < reviewList.length
+      ? reviewList[contentReviewIndex]
+      : null;
+
+  const completionSummaryFirst = stepsOutline[0]?.id === "__completion_summary__";
+  const totalProgramSteps = enrollment.totalSteps ?? 0;
+
+  function outlineKindLabel(kind: OutlineStep["kind"]) {
+    if (kind === "QUIZ") return "(quiz)";
+    if (kind === "SUMMARY") return "(summary)";
+    return "";
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-transparent dark:bg-slate-950">
@@ -179,21 +264,54 @@ export function OnboardingPlayerPage() {
             Steps
           </h2>
           <ol className="mt-3 space-y-2">
-            {stepsOutline.map((s, i) => (
-              <li
-                key={s.id}
-                className={`rounded-xl border px-3 py-2.5 text-base shadow-sm ${
-                  s.completed
-                    ? "border-slate-300/70 bg-slate-100/80 text-slate-800 dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-100"
-                    : "border-slate-200/80 bg-white text-slate-800 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-100"
-                }`}
-              >
-                <span className="text-slate-500 dark:text-slate-400">{i + 1}.</span> {s.title}
-                <span className="ml-1 text-sm text-slate-500 dark:text-slate-400">
-                  {s.kind === "QUIZ" ? "(quiz)" : ""}
-                </span>
-              </li>
-            ))}
+            {stepsOutline.map((s, i) => {
+              const isReviewActive = reviewList !== null && reviewStepIndex === i;
+              const isProgressCurrent =
+                !completed &&
+                !reviewList &&
+                (s.id === "__completion_summary__"
+                  ? enrollment.currentStepIndex === totalProgramSteps
+                  : completionSummaryFirst
+                    ? enrollment.currentStepIndex === i - 1
+                    : enrollment.currentStepIndex === i);
+              const rowClass = s.completed
+                ? "border-slate-300/70 bg-slate-100/80 text-slate-800 dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-100"
+                : "border-slate-200/80 bg-white text-slate-800 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-100";
+              const activeRing = isReviewActive
+                ? "ring-2 ring-brand/50 ring-offset-2 ring-offset-white dark:ring-offset-slate-950"
+                : "";
+              const progressRing = isProgressCurrent
+                ? "ring-2 ring-brand/50 ring-offset-2 ring-offset-white dark:ring-offset-slate-950"
+                : "";
+              const kindSuffix = outlineKindLabel(s.kind);
+              if (reviewList) {
+                return (
+                  <li key={s.id}>
+                    <button
+                      type="button"
+                      onClick={() => setReviewStepIndex(i)}
+                      className={`w-full rounded-xl border px-3 py-2.5 text-left text-base shadow-sm transition ${rowClass} ${activeRing}`}
+                    >
+                      <span className="text-slate-500 dark:text-slate-400">{i + 1}.</span> {s.title}
+                      {kindSuffix ? (
+                        <span className="ml-1 text-sm text-slate-500 dark:text-slate-400">{kindSuffix}</span>
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              }
+              return (
+                <li
+                  key={s.id}
+                  className={`rounded-xl border px-3 py-2.5 text-base shadow-sm ${rowClass} ${progressRing}`}
+                >
+                  <span className="text-slate-500 dark:text-slate-400">{i + 1}.</span> {s.title}
+                  {kindSuffix ? (
+                    <span className="ml-1 text-sm text-slate-500 dark:text-slate-400">{kindSuffix}</span>
+                  ) : null}
+                </li>
+              );
+            })}
           </ol>
         </aside>
 
@@ -204,7 +322,108 @@ export function OnboardingPlayerPage() {
             </p>
           )}
 
-          {completed && (
+          {completed && reviewList && onReviewSummary && (
+            <div className="rounded-xl border border-emerald-200/90 bg-emerald-50/90 px-4 py-4 dark:border-emerald-900/40 dark:bg-emerald-950/35">
+              <p className="text-lg font-medium text-emerald-950 dark:text-emerald-100">
+                You've completed this onboarding.
+              </p>
+              <p className="mt-1.5 text-base leading-relaxed text-emerald-900/85 dark:text-emerald-200/85">
+                Select a step above to review lessons and quizzes. Content is read-only.
+              </p>
+              {completionSummary && (
+                <div className="mt-6 border-t border-emerald-200/70 pt-6 dark:border-emerald-800/50">
+                  <h3 className="text-base font-semibold text-emerald-950 dark:text-emerald-100">Your results</h3>
+                  <OnboardingResultsStats
+                    completionPercent={completionSummary.completionPercent}
+                    quizSummary={completionSummary.quizSummary}
+                  />
+                </div>
+              )}
+              <div className="mt-8 border-t border-emerald-200/70 pt-6 dark:border-emerald-800/50">
+                <Link
+                  to="/onboarding"
+                  className="text-sm font-medium text-emerald-900/90 transition hover:text-emerald-700 dark:text-emerald-200 dark:hover:text-emerald-100"
+                >
+                  ← Back to all programs
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {completed && activeReviewStep?.kind === "LESSON" && (
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Review (read-only)</p>
+              <h2 className="mt-2 text-2xl font-medium tracking-tight text-slate-800 dark:text-slate-100">
+                {activeReviewStep.title}
+              </h2>
+              <div className="mt-5 whitespace-pre-wrap text-lg leading-relaxed text-slate-600 dark:text-slate-300">
+                {activeReviewStep.lessonContent}
+              </div>
+              <div className="mt-10 border-t border-slate-200/80 pt-8 dark:border-slate-700">
+                <Link
+                  to="/onboarding"
+                  className="text-sm font-medium text-slate-600 transition hover:text-brand dark:text-slate-300"
+                >
+                  ← Back to all programs
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {completed && activeReviewStep?.kind === "QUIZ" && (
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Review (read-only)</p>
+              <h2 className="mt-2 text-2xl font-medium tracking-tight text-slate-800 dark:text-slate-100">
+                {activeReviewStep.title}
+              </h2>
+              <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">Your submitted answers.</p>
+              <div className="mt-6 space-y-8">
+                {activeReviewStep.questions.map((q) => {
+                  const chosen = activeReviewStep.savedAnswers[q.id];
+                  return (
+                    <fieldset key={q.id} className="space-y-3">
+                      <legend className="text-lg font-medium text-slate-800 dark:text-slate-100">
+                        {q.prompt}
+                      </legend>
+                      <div className="space-y-2">
+                        {q.options.map((o) => (
+                          <label
+                            key={o.id}
+                            className="flex cursor-default items-start gap-2 rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 py-2.5 dark:border-slate-600 dark:bg-slate-800/40"
+                          >
+                            <input
+                              type="radio"
+                              name={`review-${q.id}`}
+                              checked={chosen === o.id}
+                              readOnly
+                              disabled
+                              className="mt-1 accent-brand"
+                            />
+                            <span className="text-base text-slate-800 dark:text-slate-100">{o.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {!chosen && (
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          Response was not recorded for this step.
+                        </p>
+                      )}
+                    </fieldset>
+                  );
+                })}
+              </div>
+              <div className="mt-10 border-t border-slate-200/80 pt-8 dark:border-slate-700">
+                <Link
+                  to="/onboarding"
+                  className="text-sm font-medium text-slate-600 transition hover:text-brand dark:text-slate-300"
+                >
+                  ← Back to all programs
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {completed && !reviewList && (
             <div className="text-center">
               <p className="text-xl font-medium text-slate-800 dark:text-slate-100">
                 You have finished this onboarding.
@@ -218,6 +437,26 @@ export function OnboardingPlayerPage() {
               >
                 Back to programs
               </Link>
+            </div>
+          )}
+
+          {!completed && currentStep?.kind === "SUMMARY" && (
+            <div>
+              <h2 className="text-2xl font-medium tracking-tight text-slate-800 dark:text-slate-100">
+                Your results
+              </h2>
+              <OnboardingResultsStats
+                completionPercent={currentStep.completionPercent}
+                quizSummary={currentStep.quizSummary}
+              />
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => void completeCurrent()}
+                className="btn-primary mt-10"
+              >
+                {submitting ? "Saving…" : "Finish onboarding"}
+              </button>
             </div>
           )}
 
