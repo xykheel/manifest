@@ -481,7 +481,9 @@ export function OnboardingPlayerPage() {
               <h2 className="text-2xl font-medium tracking-tight text-slate-800 dark:text-slate-100">
                 {currentStep.title}
               </h2>
-              <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">Answer every question to continue.</p>
+              <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">
+                Choose an answer for each question. You can continue even if some are incorrect.
+              </p>
               <div className="mt-6 space-y-8">
                 {currentStep.questions.map((q) => (
                   <fieldset key={q.id} className="space-y-3">
