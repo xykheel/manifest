@@ -111,6 +111,31 @@ function computeQuizSummary(steps: ProgramStepPlayer[], snapshots: StepSnapshots
   };
 }
 
+/** One percentage per quiz step (completed attempts only), for dashboard aggregates. */
+function collectQuizStepPercents(steps: ProgramStepPlayer[], snapshots: StepSnapshots): number[] {
+  const out: number[] = [];
+  for (const step of steps) {
+    if (step.kind !== OnboardingStepKind.QUIZ) continue;
+    const saved = snapshots[step.id]?.answers ?? {};
+    let qCorrect = 0;
+    const qTotal = step.quizQuestions.length;
+    if (qTotal === 0) continue;
+    for (const q of step.quizQuestions) {
+      const chosen = saved[q.id];
+      const opt = q.options.find((o) => o.id === chosen);
+      if (opt?.isCorrect) qCorrect++;
+    }
+    out.push(Math.round((qCorrect / qTotal) * 100));
+  }
+  return out;
+}
+
+function formatMonthLabelYm(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  if (!y || !m) return ym;
+  return new Date(y, m - 1, 1).toLocaleDateString("en-AU", { month: "short", year: "numeric" });
+}
+
 function stepsOutlinePlayer(
   steps: { id: string; sortOrder: number; kind: OnboardingStepKind; title: string }[],
   enrollment: {
@@ -205,6 +230,80 @@ onboardingRouter.get("/programs", async (req, res) => {
           }
         : null,
     })),
+  });
+});
+
+onboardingRouter.get("/dashboard", async (req, res) => {
+  const userId = req.user!.sub;
+  const userDepartments = await getUserDepartments(userId);
+  const visibility = publishedProgramWhereForUser(userDepartments);
+  const programWhere = { published: true as const, ...visibility };
+
+  const [programmesAvailable, completedEnrollments] = await Promise.all([
+    prisma.onboardingProgram.count({ where: programWhere }),
+    prisma.userOnboardingEnrollment.findMany({
+      where: {
+        userId,
+        status: OnboardingEnrollmentStatus.COMPLETED,
+        program: programWhere,
+      },
+      include: {
+        program: {
+          include: {
+            steps: { orderBy: { sortOrder: "asc" }, include: stepIncludePlayer },
+          },
+        },
+      },
+    }),
+  ]);
+
+  const programmesCompleted = completedEnrollments.length;
+
+  const quizStepPercents: number[] = [];
+  const completionsByMonth = new Map<string, number>();
+
+  for (const en of completedEnrollments) {
+    const completedAt = en.completedAt;
+    if (completedAt) {
+      const key = `${completedAt.getFullYear()}-${String(completedAt.getMonth() + 1).padStart(2, "0")}`;
+      completionsByMonth.set(key, (completionsByMonth.get(key) ?? 0) + 1);
+    }
+    const snapshots = parseStepSnapshots(en.stepSnapshots);
+    quizStepPercents.push(...collectQuizStepPercents(en.program.steps, snapshots));
+  }
+
+  const averageQuizScorePercent =
+    quizStepPercents.length > 0
+      ? Math.round(quizStepPercents.reduce((a, b) => a + b, 0) / quizStepPercents.length)
+      : null;
+
+  const band = { g90: 0, g70: 0, g50: 0, low: 0 };
+  for (const p of quizStepPercents) {
+    if (p >= 90) band.g90++;
+    else if (p >= 70) band.g70++;
+    else if (p >= 50) band.g50++;
+    else band.low++;
+  }
+
+  const monthKeys = Array.from(completionsByMonth.keys()).sort();
+  const completionsTimeline = monthKeys.map((month) => ({
+    month,
+    label: formatMonthLabelYm(month),
+    count: completionsByMonth.get(month) ?? 0,
+  }));
+
+  res.json({
+    programmesAvailable,
+    programmesCompleted,
+    averageQuizScorePercent,
+    completionsTimeline,
+    quizScoreBands: [
+      { key: "90-100", label: "90–100%", count: band.g90, fill: "#0f766e" },
+      { key: "70-89", label: "70–89%", count: band.g70, fill: "#14b8a6" },
+      { key: "50-69", label: "50–69%", count: band.g50, fill: "#2dd4bf" },
+      { key: "0-49", label: "Below 50%", count: band.low, fill: "#64748b" },
+    ],
+    quizAttemptsCounted: quizStepPercents.length,
   });
 });
 
