@@ -1,6 +1,6 @@
 import { UserRole } from "@manifest/shared";
 import { useEffect, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { AccountMenu } from "./AccountMenu";
 import { AdministrationMegaMenu } from "./AdministrationMegaMenu";
@@ -42,6 +42,7 @@ function HamburgerIcon({ open }: { open: boolean }) {
 
 export function AuthenticatedLayout() {
   const { user } = useAuth();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   if (!user) {
@@ -135,13 +136,13 @@ export function AuthenticatedLayout() {
         <>
           <button
             type="button"
-            className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-[2px] md:hidden"
+            className="animate-ui-fade-in fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-[2px] md:hidden"
             aria-label="Close menu"
             onClick={() => setMobileOpen(false)}
           />
           <div
             id="mobile-primary-nav"
-            className="fixed inset-y-0 left-0 z-[70] flex w-[min(100vw-2.5rem,18.5rem)] flex-col border-r border-slate-200/90 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 md:hidden"
+            className="animate-ui-fade-in fixed inset-y-0 left-0 z-[70] flex w-[min(100vw-2.5rem,18.5rem)] flex-col border-r border-slate-200/90 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 md:hidden"
             role="dialog"
             aria-modal="true"
             aria-label="Site menu"
@@ -201,7 +202,12 @@ export function AuthenticatedLayout() {
       )}
 
       <div className="relative z-0 flex min-h-0 flex-1 flex-col bg-transparent dark:bg-slate-950">
-        <Outlet />
+        <div
+          key={location.pathname}
+          className="animate-ui-fade-in flex min-h-0 flex-1 flex-col"
+        >
+          <Outlet />
+        </div>
       </div>
       <PageWaveFooter />
     </div>

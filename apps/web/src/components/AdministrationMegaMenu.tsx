@@ -119,7 +119,7 @@ export function AdministrationMegaMenu() {
 
       {open && (
         <div
-          className="absolute left-0 top-full z-[110] pt-2 motion-reduce:transition-none"
+          className="animate-ui-fade-in absolute left-0 top-full z-[110] pt-2 motion-reduce:transition-none"
           role="menu"
           aria-label="Administration"
         >
