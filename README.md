@@ -16,6 +16,7 @@ This repo is a **pnpm monorepo** (web SPA, REST API, shared package). Use it as 
 | **Admins** | CRUD onboarding programmes (steps, lesson HTML, quiz questions), publishing and department scoping, user list (roles / departments). |
 | **Lessons** | [TipTap](https://tiptap.dev/) / ProseMirror editor in the admin builder; stored HTML is **sanitised** when shown in the player (structure, alignment, links, etc.). |
 | **Auth** | JWT access token (client memory) + refresh token (**httpOnly** cookie). Optional **Microsoft Entra ID** SSO when tenant/client env vars are set. |
+| **AI Assistant** | Floating chatbot available on every authenticated page, backed by a configurable AI provider (Ollama, OpenAI, Anthropic, or any OpenAI-compatible endpoint). Answers questions about published onboarding programmes. Administrators configure the provider, URL, and model via **Administration → AI Settings**. |
 
 ---
 
@@ -152,6 +153,49 @@ docker compose -f docker-compose.prod.yml --env-file .env up --build
 - Set **`VITE_API_URL`** at **image build time** to the URL clients use for the API.  
 
 > Do **not** merge `docker-compose.yml` with `docker-compose.prod.yml` for a clean production deploy—Compose merges volume definitions. Use `docker-compose.prod.yml` alone for production.
+
+---
+
+## AI Assistant
+
+A floating chat widget is available on every authenticated page (bottom-right corner). It answers questions about published onboarding programmes by sending conversation context—including programme titles, lesson content, and quiz questions—to the configured AI provider.
+
+### Supported providers
+
+| Provider | Notes |
+|----------|-------|
+| **Ollama** | Self-hosted models. Requires a base URL (e.g. `http://localhost:11434`). API key optional. |
+| **OpenAI** | GPT-4o, GPT-4 Turbo, etc. API key required. Base URL optional (defaults to `https://api.openai.com`). |
+| **Anthropic** | Claude 3.5 Sonnet, Claude 3 Opus, etc. API key required. Base URL optional. |
+| **OpenAI-compatible** | Any server that implements the OpenAI Chat Completions API (Groq, Azure OpenAI, LM Studio, Together AI, etc.). Requires a base URL. |
+
+### Configuration
+
+1. Sign in as an administrator and go to **Administration → AI Settings**.
+2. Select a provider, enter the server URL (where required), and enter the API key.
+3. Click **Refresh models** to load available models from the provider, select one, then **Save settings**.
+
+### API key security
+
+API keys are **never returned to the browser**. They are encrypted at rest using **AES-256-GCM** before being stored in the database. The key used for encryption is sourced from the `ENCRYPTION_KEY` environment variable.
+
+Generate a key:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Add it to `apps/api/.env`:
+
+```
+ENCRYPTION_KEY=<64 hex characters>
+```
+
+> **Required in production.** In development, the API falls back to an insecure all-zero key and prints a warning—this is intentional so local dev works without any configuration, but must never be used in a shared or production environment.
+
+### Timeouts
+
+Model responses can be slow. The chat endpoint allows up to **2 minutes** for a response before returning a timeout error. The model list endpoint times out after **10 seconds**.
 
 ---
 
