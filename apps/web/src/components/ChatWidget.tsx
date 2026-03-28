@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { api } from "../lib/api";
+import { baseURL } from "../lib/api";
+import { tokenStore } from "../lib/tokenStore";
 
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
   error?: boolean;
-};
-
-type ApiError = {
-  response?: { data?: { error?: string } };
-  message?: string;
 };
 
 function genId() {
@@ -189,29 +185,99 @@ export function ChatWidget() {
 
     const userMsg: Message = { id: genId(), role: "user", content: text };
     const history = messages.slice(-20).map(({ role, content }) => ({ role, content }));
+    const assistantId = genId();
 
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setLoading(true);
 
+    const abortCtrl = new AbortController();
+    const timeoutId = setTimeout(() => abortCtrl.abort(), 125_000);
+
+    // Track whether the assistant bubble has been inserted yet.
+    // It is only added on the first token so we never render an empty bubble.
+    let bubbleInserted = false;
+
     try {
-      const { data } = await api.post<{ reply: string }>(
-        "/api/chat",
-        { message: text, history },
-        { timeout: 125_000 },
-      );
-      const assistantMsg: Message = { id: genId(), role: "assistant", content: data.reply };
-      setMessages((prev) => [...prev, assistantMsg]);
+      const token = tokenStore.get();
+      const res = await fetch(`${baseURL}/api/chat/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ message: text, history }),
+        signal: abortCtrl.signal,
+      });
+
+      if (!res.ok || !res.body) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? `Server error ${res.status}`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const data = line.startsWith("data: ") ? line.slice(6).trim() : "";
+          if (!data || data === "[DONE]") continue;
+
+          try {
+            const parsed = JSON.parse(data) as { token?: string; error?: string };
+
+            if (parsed.error) throw new Error(parsed.error);
+
+            if (parsed.token) {
+              if (!bubbleInserted) {
+                // First token: hide spinner and create the assistant bubble in one update
+                bubbleInserted = true;
+                setLoading(false);
+                setMessages((prev) => [
+                  ...prev,
+                  { id: assistantId, role: "assistant", content: parsed.token! },
+                ]);
+              } else {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId ? { ...m, content: m.content + parsed.token } : m,
+                  ),
+                );
+              }
+            }
+          } catch (e) {
+            if (e instanceof SyntaxError) continue;
+            throw e;
+          }
+        }
+      }
     } catch (err: unknown) {
-      const apiErr = err as ApiError;
-      const msg =
-        apiErr?.response?.data?.error ??
-        (apiErr?.message?.toLowerCase().includes("timeout")
-          ? "The AI took too long to respond. Please try again."
-          : "Something went wrong. Please try again.");
-      const errMsg: Message = { id: genId(), role: "assistant", content: msg, error: true };
-      setMessages((prev) => [...prev, errMsg]);
+      const isAbort = err instanceof Error && err.name === "AbortError";
+      const msg = isAbort
+        ? "The AI took too long to respond. Please try again."
+        : (err instanceof Error ? err.message : "Something went wrong. Please try again.");
+
+      // If the bubble was already inserted, mark it as an error in-place.
+      // If no token ever arrived, append a fresh error bubble.
+      setMessages((prev) => {
+        if (bubbleInserted) {
+          return prev.map((m) =>
+            m.id === assistantId ? { ...m, content: msg, error: true } : m,
+          );
+        }
+        return [...prev, { id: assistantId, role: "assistant", content: msg, error: true }];
+      });
+      setLoading(false);
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 50);
     }

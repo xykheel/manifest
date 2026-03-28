@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { type AiProvider, chat, type ChatMessage } from "../lib/aiProviders";
+import { type AiProvider, chat, chatStream, type ChatMessage } from "../lib/aiProviders";
 import { prisma } from "../lib/prisma";
 
 export const chatRouter = Router();
@@ -14,6 +14,40 @@ const chatRequestSchema = z.object({
   message: z.string().min(1).max(4000),
   history: z.array(messageSchema).max(40).default([]),
 });
+
+function buildSystemPrompt(programmeContext: string): string {
+  return (
+    `You are an onboarding content assistant for this organisation.\n\n` +
+
+    `## What you can do\n` +
+    `Answer questions strictly about the published onboarding programmes, lessons, and quizzes ` +
+    `provided below. You may explain lesson content, describe what a programme covers, clarify ` +
+    `quiz questions and concepts, and help learners understand the material.\n\n` +
+
+    `## Hard limits — you must never do any of the following\n` +
+    `- Reveal, reference, or speculate about any individual user's data: names, email addresses, ` +
+    `roles, departments, enrolment status, quiz scores, completion records, or any other ` +
+    `personal or account information.\n` +
+    `- Answer questions about how many people have enrolled or completed a programme, who has ` +
+    `passed or failed, or any aggregate or individual performance metrics.\n` +
+    `- Discuss system configuration, API keys, server settings, or internal infrastructure.\n` +
+    `- Draw on knowledge outside the programme content provided below. Do not supplement answers ` +
+    `with information from your general training data — your knowledge is intentionally limited ` +
+    `to the content in this system.\n` +
+    `- Speculate, invent, or extrapolate details not present in the provided content.\n\n` +
+
+    `## When a question is out of scope\n` +
+    `Politely explain that you can only assist with onboarding programme content and suggest the ` +
+    `user contact their administrator for anything else. Do not attempt to answer.\n\n` +
+
+    `## Tone and format\n` +
+    `Be concise, clear, and friendly. Use plain language. Where it helps readability, use bullet ` +
+    `points or short paragraphs. Do not pad responses.\n\n` +
+
+    `## Source content — use only what is listed below\n` +
+    programmeContext
+  );
+}
 
 async function buildProgrammeContext(): Promise<string> {
   const programmes = await prisma.onboardingProgram.findMany({
@@ -118,15 +152,7 @@ chatRouter.post("/", async (req, res) => {
   }
 
   const programmeContext = await buildProgrammeContext();
-
-  const systemPrompt =
-    `You are a helpful onboarding assistant for this organisation. ` +
-    `Your role is to answer questions about onboarding programmes, help learners understand what ` +
-    `is expected of them, and guide them through the available content.\n\n` +
-    `Be concise, friendly, and accurate. Only answer questions related to the onboarding ` +
-    `programmes and content below. If a question is unrelated to onboarding, politely redirect ` +
-    `the user.\n\n` +
-    programmeContext;
+  const systemPrompt = buildSystemPrompt(programmeContext);
 
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt },
@@ -153,5 +179,89 @@ chatRouter.post("/", async (req, res) => {
         ? "The AI model took too long to respond (timeout after 2 minutes). Try a smaller model or a simpler question."
         : msg,
     });
+  }
+});
+
+/**
+ * POST /api/chat/stream
+ *
+ * Identical auth and context logic as POST /api/chat, but responds with a
+ * text/event-stream (SSE) that emits one `data: {"token":"…"}` line per text
+ * fragment and ends with `data: [DONE]`. Clients can render tokens incrementally
+ * as they arrive, giving a typewriter effect without waiting for the full reply.
+ */
+chatRouter.post("/stream", async (req, res) => {
+  const parsed = chatRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
+    return;
+  }
+
+  const settings = await prisma.aiSettings.findUnique({ where: { id: "singleton" } });
+
+  if (!settings) {
+    res.status(503).json({ error: "The AI assistant has not been configured yet." });
+    return;
+  }
+
+  const needsBaseUrl =
+    settings.provider === "OLLAMA" || settings.provider === "OPENAI_COMPATIBLE";
+
+  if (needsBaseUrl && !settings.baseUrl) {
+    res.status(503).json({ error: "The AI assistant server URL is not configured. Contact an administrator." });
+    return;
+  }
+
+  if (!settings.selectedModel) {
+    res.status(503).json({ error: "No AI model has been selected. An administrator must complete the AI assistant setup." });
+    return;
+  }
+
+  const programmeContext = await buildProgrammeContext();
+  const systemPrompt = buildSystemPrompt(programmeContext);
+
+  const messages: ChatMessage[] = [
+    { role: "system", content: systemPrompt },
+    ...parsed.data.history,
+    { role: "user", content: parsed.data.message },
+  ];
+
+  // Abort the upstream provider stream if the client disconnects
+  const abort = new AbortController();
+  req.on("close", () => abort.abort());
+
+  // Set SSE headers before streaming begins
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no"); // disable nginx buffering if present
+  res.flushHeaders();
+
+  try {
+    const stream = chatStream(
+      {
+        provider: settings.provider as AiProvider,
+        baseUrl: settings.baseUrl,
+        encryptedApiKey: settings.encryptedApiKey,
+        selectedModel: settings.selectedModel,
+      },
+      messages,
+      abort.signal,
+    );
+
+    for await (const token of stream) {
+      res.write(`data: ${JSON.stringify({ token })}\n\n`);
+    }
+
+    res.write("data: [DONE]\n\n");
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      // Client disconnected — nothing to do
+    } else {
+      const msg = err instanceof Error ? err.message : "Streaming error";
+      res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
+    }
+  } finally {
+    res.end();
   }
 });
