@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { type AiProvider, chat, chatStream, type ChatMessage } from "../lib/aiProviders";
+import { getUserDepartments, publishedProgramWhereForUser } from "../lib/onboardingAccess";
 import { prisma } from "../lib/prisma";
 
 export const chatRouter = Router();
@@ -49,9 +50,10 @@ function buildSystemPrompt(programmeContext: string): string {
   );
 }
 
-async function buildProgrammeContext(): Promise<string> {
+async function buildProgrammeContext(userId: string): Promise<string> {
+  const userDepartments = await getUserDepartments(userId);
   const programmes = await prisma.onboardingProgram.findMany({
-    where: { published: true },
+    where: { published: true, ...publishedProgramWhereForUser(userDepartments) },
     select: {
       title: true,
       description: true,
@@ -151,7 +153,7 @@ chatRouter.post("/", async (req, res) => {
     return;
   }
 
-  const programmeContext = await buildProgrammeContext();
+  const programmeContext = await buildProgrammeContext(req.user!.sub);
   const systemPrompt = buildSystemPrompt(programmeContext);
 
   const messages: ChatMessage[] = [
@@ -217,7 +219,7 @@ chatRouter.post("/stream", async (req, res) => {
     return;
   }
 
-  const programmeContext = await buildProgrammeContext();
+  const programmeContext = await buildProgrammeContext(req.user!.sub);
   const systemPrompt = buildSystemPrompt(programmeContext);
 
   const messages: ChatMessage[] = [
