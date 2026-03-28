@@ -4,6 +4,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { AccountMenu } from "./AccountMenu";
 import { AdministrationMegaMenu } from "./AdministrationMegaMenu";
+import { ChatWidget } from "./ChatWidget";
 import { PageWaveFooter } from "./PageWaveFooter";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -124,6 +125,9 @@ export function AuthenticatedLayout() {
                   <NavLink to="/admin/onboarding" className={navLinkClass}>
                     Builder
                   </NavLink>
+                  <NavLink to="/admin/settings" className={navLinkClass}>
+                    AI Settings
+                  </NavLink>
                 </div>
               )}
             </nav>
@@ -203,6 +207,13 @@ export function AuthenticatedLayout() {
                     >
                       Analytics
                     </NavLink>
+                    <NavLink
+                      to="/admin/settings"
+                      className={mobileNavLinkClass}
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      AI Settings
+                    </NavLink>
                   </>
                 )}
               </div>
@@ -220,6 +231,7 @@ export function AuthenticatedLayout() {
         </div>
       </div>
       <PageWaveFooter />
+      <ChatWidget />
     </div>
   );
 }
