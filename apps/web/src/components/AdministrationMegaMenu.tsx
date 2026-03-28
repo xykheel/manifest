@@ -157,7 +157,7 @@ export function AdministrationMegaMenu() {
                   </span>
                 </NavLink>
               </li>
-              <li className="h-full min-h-0 sm:col-span-2 lg:col-span-1">
+              <li className="h-full min-h-0">
                 <NavLink
                   to="/admin/analytics"
                   role="menuitem"
@@ -168,6 +168,20 @@ export function AdministrationMegaMenu() {
                   </span>
                   <span className="mt-1 block text-sm leading-snug text-slate-600 dark:text-slate-300">
                     Usage, completions, and programme metrics.
+                  </span>
+                </NavLink>
+              </li>
+              <li className="h-full min-h-0 sm:col-span-2 lg:col-span-1">
+                <NavLink
+                  to="/admin/settings"
+                  role="menuitem"
+                  className={({ isActive }) => menuTileClass(isActive)}
+                >
+                  <span className="block text-base font-semibold text-slate-800 dark:text-slate-100">
+                    AI Settings
+                  </span>
+                  <span className="mt-1 block text-sm leading-snug text-slate-600 dark:text-slate-300">
+                    Configure the Ollama chatbot assistant.
                   </span>
                 </NavLink>
               </li>
