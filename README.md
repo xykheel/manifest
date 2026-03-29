@@ -250,3 +250,9 @@ For reproducible installs, run `pnpm install` locally, commit `pnpm-lock.yaml`, 
 ## License
 
 [MIT](LICENSE)
+
+---
+
+## Support
+
+- [Buy me a coffee](https://ko-fi.com/xykheel)
