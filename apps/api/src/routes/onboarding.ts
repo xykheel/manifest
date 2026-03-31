@@ -150,14 +150,14 @@ function stepsOutlinePlayer(
     enrollment.currentStepIndex === steps.length
   ) {
     return [
+      ...base,
       {
         id: "__completion_summary__",
-        sortOrder: -1,
+        sortOrder: steps.length,
         kind: "SUMMARY" as const,
         title: "Your results",
         completed: false,
       },
-      ...base,
     ];
   }
   if (
@@ -165,14 +165,14 @@ function stepsOutlinePlayer(
     steps.length > 0
   ) {
     return [
+      ...base,
       {
         id: "__review_summary__",
-        sortOrder: -1,
+        sortOrder: steps.length,
         kind: "SUMMARY" as const,
         title: "Summary",
         completed: true,
       },
-      ...base,
     ];
   }
   return base;
@@ -664,6 +664,71 @@ onboardingRouter.post("/programs/:programId/complete-step", async (req, res) => 
     enrollment: {
       status: OnboardingEnrollmentStatus.IN_PROGRESS,
       currentStepIndex: nextIndex,
+    },
+  });
+});
+
+/**
+ * POST /api/onboarding/programs/:programId/go-back
+ *
+ * Moves the user back to the previous step and marks it as incomplete by
+ * decrementing currentStepIndex. Also clears any saved quiz snapshot for the
+ * step being returned to so the user can re-attempt it.
+ */
+onboardingRouter.post("/programs/:programId/go-back", async (req, res) => {
+  const userId = req.user!.sub;
+  const programId = req.params.programId;
+
+  const userDepartments = await getUserDepartments(userId);
+  const visibility = publishedProgramWhereForUser(userDepartments);
+  const program = await prisma.onboardingProgram.findFirst({
+    where: { id: programId, published: true, ...visibility },
+    include: {
+      steps: { orderBy: { sortOrder: "asc" }, select: { id: true } },
+    },
+  });
+  if (!program) {
+    res.status(404).json({ error: "Programme not found" });
+    return;
+  }
+
+  const enrollment = await prisma.userOnboardingEnrollment.findUnique({
+    where: { userId_programId: { userId, programId } },
+  });
+  if (!enrollment) {
+    res.status(400).json({ error: "Start the programme first" });
+    return;
+  }
+  if (enrollment.status === OnboardingEnrollmentStatus.COMPLETED) {
+    res.status(400).json({ error: "Programme is already completed" });
+    return;
+  }
+  if (enrollment.currentStepIndex <= 0) {
+    res.status(400).json({ error: "Already on the first step" });
+    return;
+  }
+
+  const prevIndex = enrollment.currentStepIndex - 1;
+  const prevStep = program.steps[prevIndex];
+
+  const snapshots = parseStepSnapshots(enrollment.stepSnapshots);
+  const nextSnapshots: StepSnapshots = { ...snapshots };
+  if (prevStep) {
+    delete nextSnapshots[prevStep.id];
+  }
+
+  await prisma.userOnboardingEnrollment.update({
+    where: { id: enrollment.id },
+    data: {
+      currentStepIndex: prevIndex,
+      stepSnapshots: nextSnapshots as Prisma.InputJsonValue,
+    },
+  });
+
+  res.json({
+    enrollment: {
+      status: OnboardingEnrollmentStatus.IN_PROGRESS,
+      currentStepIndex: prevIndex,
     },
   });
 });

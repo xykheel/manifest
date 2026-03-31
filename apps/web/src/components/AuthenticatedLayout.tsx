@@ -4,7 +4,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { AccountMenu } from "./AccountMenu";
 import { AdministrationMegaMenu } from "./AdministrationMegaMenu";
-import { ChatWidget } from "./ChatWidget";
+
 import { PageWaveFooter } from "./PageWaveFooter";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -231,7 +231,6 @@ export function AuthenticatedLayout() {
         </div>
       </div>
       <PageWaveFooter />
-      <ChatWidget />
     </div>
   );
 }

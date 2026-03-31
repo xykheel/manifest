@@ -103,7 +103,7 @@ export function CompletionsAreaChart({
             {p.label}
           </text>
         ))}
-        {[0, Math.ceil(maxY / 2), maxY].map((tick) => {
+        {[...new Set([0, Math.ceil(maxY / 2), maxY])].map((tick) => {
           const gy = padT + innerH - (tick / maxY) * innerH;
           return (
             <text key={tick} x={4} y={gy + 4} className="fill-current text-[10px]">
