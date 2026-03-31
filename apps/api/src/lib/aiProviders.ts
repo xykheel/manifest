@@ -367,3 +367,36 @@ export async function* chatStream(
       throw new Error(`Unsupported AI provider: ${String(settings.provider)}`);
   }
 }
+
+/**
+ * Convert text to speech using the configured AI provider.
+ * Returns a Buffer containing MP3 audio, or null if TTS is not supported
+ * by the current provider.
+ */
+export async function textToSpeech(
+  settings: AiSettingsShape,
+  text: string,
+  voice = "nova",
+): Promise<Buffer | null> {
+  if (settings.provider !== "OPENAI" && settings.provider !== "OPENAI_COMPATIBLE") {
+    return null;
+  }
+
+  const apiKey = settings.encryptedApiKey ? decrypt(settings.encryptedApiKey) : "";
+  const baseUrl = settings.provider === "OPENAI"
+    ? "https://api.openai.com"
+    : settings.baseUrl.replace(/\/$/, "");
+
+  const res = await fetch(`${baseUrl}/v1/audio/speech`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ model: "tts-1", input: text, voice }),
+    signal: AbortSignal.timeout(30_000),
+  });
+
+  if (!res.ok) return null;
+  return Buffer.from(await res.arrayBuffer());
+}

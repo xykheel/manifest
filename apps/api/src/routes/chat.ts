@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { type AiProvider, chat, chatStream, type ChatMessage } from "../lib/aiProviders";
+import { type AiProvider, chat, chatStream, textToSpeech, type ChatMessage } from "../lib/aiProviders";
 import { getUserDepartments, publishedProgramWhereForUser } from "../lib/onboardingAccess";
 import { prisma } from "../lib/prisma";
 
@@ -367,5 +367,40 @@ chatRouter.post("/stream", async (req, res) => {
     }
   } finally {
     res.end();
+  }
+});
+
+/**
+ * POST /api/chat/tts
+ *
+ * Converts text to speech via the configured AI provider and returns MP3 audio.
+ * Returns 204 (no content) when the current provider does not support TTS.
+ */
+const ttsSchema = z.object({ text: z.string().min(1).max(4096) });
+
+chatRouter.post("/tts", async (req, res) => {
+  const parsed = ttsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "text is required" });
+    return;
+  }
+
+  const settings = await prisma.aiSettings.findUnique({ where: { id: "singleton" } });
+  if (!settings) {
+    res.status(204).end();
+    return;
+  }
+
+  try {
+    const audio = await textToSpeech(settings, parsed.data.text);
+    if (!audio) {
+      res.status(204).end();
+      return;
+    }
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Content-Length", audio.length);
+    res.send(audio);
+  } catch {
+    res.status(204).end();
   }
 });

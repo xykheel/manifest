@@ -201,56 +201,64 @@ function stripMarkdown(text: string): string {
  * Directly speak text using the browser's speechSynthesis API.
  * Returns a promise that resolves when speaking finishes (or immediately if unavailable).
  */
+function pickSpeechVoice(): SpeechSynthesisVoice | null {
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length === 0) return null;
+  return (
+    voices.find((v) => /female/i.test(v.name) && v.lang === "en-AU") ??
+    voices.find((v) => /female/i.test(v.name) && v.lang === "en-GB") ??
+    voices.find((v) => /female/i.test(v.name) && v.lang.startsWith("en")) ??
+    voices.find((v) => /female/i.test(v.name)) ??
+    voices.find((v) => v.lang === "en-AU") ??
+    voices.find((v) => v.lang.startsWith("en") && v.default) ??
+    voices.find((v) => v.lang.startsWith("en")) ??
+    voices[0]
+  );
+}
+
 function speakText(text: string): Promise<void> {
   return new Promise((resolve) => {
-    if (!("speechSynthesis" in window)) {
-      resolve();
-      return;
-    }
+    if (!("speechSynthesis" in window)) { resolve(); return; }
 
     const plain = stripMarkdown(text);
-    if (!plain) {
-      resolve();
-      return;
-    }
+    if (!plain) { resolve(); return; }
 
     window.speechSynthesis.cancel();
 
+    const doSpeak = () => {
+      const voice = pickSpeechVoice();
+      const utterance = new SpeechSynthesisUtterance(plain);
+      if (voice) { utterance.voice = voice; utterance.lang = voice.lang; }
+      utterance.rate = 1.05;
+
+      // Chrome cuts off speech after ~15 s — pause/resume works around it
+      const workaround = setInterval(() => {
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        }
+      }, 10_000);
+
+      utterance.onend = () => { clearInterval(workaround); resolve(); };
+      utterance.onerror = () => { clearInterval(workaround); resolve(); };
+      window.speechSynthesis.speak(utterance);
+    };
+
+    // Voices may not be loaded yet on first call — wait if needed
     const voices = window.speechSynthesis.getVoices();
-    const voice =
-      voices.find((v) => v.lang === "en-AU") ??
-      voices.find((v) => v.lang.startsWith("en") && v.default) ??
-      voices.find((v) => v.lang.startsWith("en")) ??
-      (voices.length > 0 ? voices[0] : null);
-
-    const utterance = new SpeechSynthesisUtterance(plain);
-    if (voice) {
-      utterance.voice = voice;
-      utterance.lang = voice.lang;
+    if (voices.length > 0) {
+      doSpeak();
+    } else {
+      const handler = () => {
+        window.speechSynthesis.removeEventListener("voiceschanged", handler);
+        doSpeak();
+      };
+      window.speechSynthesis.addEventListener("voiceschanged", handler);
+      setTimeout(() => {
+        window.speechSynthesis.removeEventListener("voiceschanged", handler);
+        doSpeak();
+      }, 2000);
     }
-    utterance.rate = 1.05;
-
-    utterance.onend = () => resolve();
-    utterance.onerror = () => resolve();
-
-    // Chrome pause workaround: periodically pause/resume to prevent 15s cutoff
-    const workaround = setInterval(() => {
-      if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.pause();
-        window.speechSynthesis.resume();
-      }
-    }, 10_000);
-
-    utterance.onend = () => {
-      clearInterval(workaround);
-      resolve();
-    };
-    utterance.onerror = () => {
-      clearInterval(workaround);
-      resolve();
-    };
-
-    window.speechSynthesis.speak(utterance);
   });
 }
 
@@ -603,6 +611,9 @@ export function OnboardingChat({ stepTitle, programTitle, programId, onCompleteS
       const assistantId = genId();
       const isVoice = !!voiceRef.current?.active;
 
+      // Stop listening immediately so the microphone doesn't compete with TTS
+      if (isVoice) voiceRef.current?.stopRecognitionForSpeech();
+
       setMessages((prev) => [...prev, userMsg]);
       setInput("");
       setLoading(true);
@@ -696,15 +707,17 @@ export function OnboardingChat({ stepTitle, programTitle, programId, onCompleteS
         setLoading(false);
       }
 
-      // Speak the full reply aloud when in voice mode
+      // Speak the full reply aloud, then resume listening
       if (isVoice && fullReply && voiceRef.current?.active) {
         speakingRef.current = true;
-        voiceRef.current.stopRecognitionForSpeech();
         await speakText(fullReply);
         speakingRef.current = false;
         if (voiceRef.current?.active) {
           voiceRef.current.resumeListening();
         }
+      } else if (isVoice && voiceRef.current?.active) {
+        // No reply to speak — resume listening immediately
+        voiceRef.current.resumeListening();
       }
 
       return fullReply;
