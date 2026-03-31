@@ -2,6 +2,8 @@
 
 ![Manifest dashboard — programme metrics, completion chart, quiz mix, and admin actions](./docs/readme/dashboard.png)
 
+![Manifest onboarding player — AI assistant, step navigation, and lesson content](./docs/readme/onboarding.png)
+
 **Manifest** is a full-stack TypeScript application for **onboarding programmes**: learners step through published **lessons** (rich text) and **quizzes**, with saved progress, completion summaries, and a read-only review. **Administrators** manage users, departments, and programme content in a small admin area.
 
 This repo is a **pnpm monorepo** (web SPA, REST API, shared package). Use it as a starting point or reference for a similar product—it is [MIT-licensed](LICENSE).
