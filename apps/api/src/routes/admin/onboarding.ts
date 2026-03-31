@@ -342,10 +342,13 @@ adminOnboardingRouter.post("/programs/:programId/steps/reorder", async (req, res
     res.status(400).json({ error: "orderedStepIds must list every step exactly once" });
     return;
   }
-  await prisma.$transaction(
-    ordered.map((id, i) =>
-      prisma.onboardingStep.update({ where: { id }, data: { sortOrder: i } }),
-    ),
-  );
+  await prisma.$transaction(async (tx) => {
+    for (let i = 0; i < ordered.length; i++) {
+      await tx.onboardingStep.update({ where: { id: ordered[i] }, data: { sortOrder: -(i + 1) } });
+    }
+    for (let i = 0; i < ordered.length; i++) {
+      await tx.onboardingStep.update({ where: { id: ordered[i] }, data: { sortOrder: i } });
+    }
+  });
   res.json({ ok: true });
 });

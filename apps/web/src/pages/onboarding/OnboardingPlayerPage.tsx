@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { LessonContentView } from "../../components/LessonContentView";
+import { OnboardingChat } from "../../components/OnboardingChat";
 import { api } from "../../lib/api";
 
 type OutlineStep = {
@@ -93,6 +94,8 @@ function OnboardingResultsStats({
   );
 }
 
+type ActiveTab = "ai" | "materials";
+
 export function OnboardingPlayerPage() {
   const { programId } = useParams<{ programId: string }>();
   const [data, setData] = useState<PlayerPayload | null>(null);
@@ -101,6 +104,9 @@ export function OnboardingPlayerPage() {
   const [submitting, setSubmitting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [reviewStepIndex, setReviewStepIndex] = useState(0);
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("ai");
+  const stepListRef = useRef<HTMLOListElement>(null);
 
   const load = useCallback(async () => {
     if (!programId) return;
@@ -125,6 +131,37 @@ export function OnboardingPlayerPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ available: boolean }>("/api/chat/status")
+      .then(({ data: res }) => {
+        if (!cancelled) {
+          setAiAvailable(res.available);
+          if (!res.available) setActiveTab("materials");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAiAvailable(false);
+          setActiveTab("materials");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Scroll the active step pill into view on mobile when the step changes
+  useEffect(() => {
+    const list = stepListRef.current;
+    if (!list) return;
+    const active = list.querySelector<HTMLElement>("[data-step-active]");
+    if (active) {
+      active.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+    }
+  }, [data?.enrollment.currentStepIndex, data?.enrollment.status]);
 
   async function startProgram() {
     if (!programId) return;
@@ -161,6 +198,21 @@ export function OnboardingPlayerPage() {
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { error?: string } } };
       setError(ax.response?.data?.error ?? "Could not complete this step.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function goBack() {
+    if (!programId || !data || data.enrollment.currentStepIndex <= 0) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.post(`/api/onboarding/programs/${programId}/go-back`);
+      await load();
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } };
+      setError(ax.response?.data?.error ?? "Could not go back.");
     } finally {
       setSubmitting(false);
     }
@@ -218,11 +270,11 @@ export function OnboardingPlayerPage() {
   }
 
   const { program, stepsOutline, currentStep, completed, reviewSteps, enrollment, completionSummary } = data;
+  const canGoBack = !completed && !!currentStep && enrollment.currentStepIndex > 0;
   const reviewList = completed && reviewSteps?.length ? reviewSteps : null;
-  const reviewSummaryFirst = stepsOutline[0]?.id === "__review_summary__";
   const onReviewSummary =
     Boolean(reviewList) && stepsOutline[reviewStepIndex]?.id === "__review_summary__";
-  const contentReviewIndex = reviewSummaryFirst ? reviewStepIndex - 1 : reviewStepIndex;
+  const contentReviewIndex = reviewStepIndex;
   const activeReviewStep =
     reviewList &&
     !onReviewSummary &&
@@ -231,7 +283,6 @@ export function OnboardingPlayerPage() {
       ? reviewList[contentReviewIndex]
       : null;
 
-  const completionSummaryFirst = stepsOutline[0]?.id === "__completion_summary__";
   const totalProgramSteps = enrollment.totalSteps ?? 0;
 
   function outlineKindLabel(kind: OutlineStep["kind"]) {
@@ -244,27 +295,92 @@ export function OnboardingPlayerPage() {
     <div className="flex min-h-0 flex-1 flex-col bg-transparent dark:bg-slate-950">
       <header className="border-b border-slate-200/80 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4">
-          <div>
+          <div className="flex items-center gap-2 md:block">
+            {/* Mobile: back arrow sits inline with the title */}
             <Link
               to="/onboarding"
-              className="text-sm font-medium text-slate-600 transition hover:text-brand dark:text-slate-300"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100 hover:text-brand dark:text-slate-300 dark:hover:bg-slate-800 md:hidden"
+              aria-label="All programmes"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
+              </svg>
+            </Link>
+            {/* Desktop: text link above the title */}
+            <Link
+              to="/onboarding"
+              className="hidden text-sm font-medium text-slate-600 transition hover:text-brand dark:text-slate-300 md:block"
             >
               ← All programmes
             </Link>
-            <h1 className="mt-1 text-2xl font-medium tracking-tight text-slate-800 dark:text-slate-100 md:text-[1.75rem]">
+            <h1 className="text-xl font-medium tracking-tight text-slate-800 dark:text-slate-100 md:mt-1 md:text-[1.75rem]">
               {program.title}
             </h1>
           </div>
           {completed && <span className="badge-complete">Completed</span>}
         </div>
+        {/* Progress bar — excludes the generated summary step from the count */}
+        {(() => {
+          const contentSteps = stepsOutline.filter((s) => s.kind !== "SUMMARY").length;
+          if (contentSteps === 0) return null;
+          const currentIndex = Math.min(enrollment.currentStepIndex, contentSteps);
+          const pct = completed ? 100 : Math.round((currentIndex / contentSteps) * 100);
+          return (
+            <div className="px-4 pb-3">
+              <div className="mx-auto max-w-7xl">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {completed
+                      ? "All steps complete"
+                      : `Step ${Math.min(currentIndex + 1, contentSteps)} of ${contentSteps}`}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    {pct === 100 && (
+                      <>
+                        <style>{`
+                          @keyframes sparkle-pop {
+                            0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+                            60% { transform: scale(1.3) rotate(10deg); opacity: 1; }
+                            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+                          }
+                          @keyframes sparkle-float {
+                            0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.9; }
+                            50% { transform: translateY(-3px) rotate(15deg); opacity: 1; }
+                          }
+                          .sparkle-1 { animation: sparkle-pop 0.5s ease-out forwards, sparkle-float 2s 0.5s ease-in-out infinite; }
+                          .sparkle-2 { animation: sparkle-pop 0.5s 0.1s ease-out forwards, sparkle-float 2s 0.7s ease-in-out infinite; opacity: 0; }
+                          .sparkle-3 { animation: sparkle-pop 0.5s 0.2s ease-out forwards, sparkle-float 2s 0.9s ease-in-out infinite; opacity: 0; }
+                        `}</style>
+                        <span className="sparkle-1 text-sm" aria-hidden>✨</span>
+                        <span className="sparkle-2 text-xs" aria-hidden>⭐</span>
+                        <span className="sparkle-3 text-sm" aria-hidden>🎉</span>
+                      </>
+                    )}
+                    <p className={`text-xs font-medium tabular-nums transition-colors duration-500 ${pct === 100 ? "font-bold text-amber-500 dark:text-amber-400" : "text-slate-600 dark:text-slate-300"}`}>
+                      {pct}%
+                    </p>
+                  </div>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-700">
+                  <div
+                    className={`h-full rounded-full transition-[width,background-color] duration-500 ease-out ${pct === 100 ? "bg-gradient-to-r from-amber-400 to-orange-400" : "bg-brand"}`}
+                    style={{ width: `${pct}%` }}
+                    role="progressbar"
+                    aria-valuenow={pct}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`Programme progress: ${pct}%`}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </header>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-8 lg:flex-row">
+      <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-4 px-4 py-4 lg:flex-row lg:gap-6 lg:py-8">
         <aside className="w-full shrink-0 lg:w-56">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Steps
-          </h2>
-          <ol className="mt-3 space-y-2">
+          <ol ref={stepListRef} className="mt-0 flex gap-2 overflow-x-auto pb-2 lg:mt-3 lg:flex-col lg:gap-0 lg:space-y-2 lg:overflow-x-visible lg:pb-0">
             {stepsOutline.map((s, i) => {
               const isReviewActive = reviewList !== null && reviewStepIndex === i;
               const isProgressCurrent =
@@ -272,9 +388,7 @@ export function OnboardingPlayerPage() {
                 !reviewList &&
                 (s.id === "__completion_summary__"
                   ? enrollment.currentStepIndex === totalProgramSteps
-                  : completionSummaryFirst
-                    ? enrollment.currentStepIndex === i - 1
-                    : enrollment.currentStepIndex === i);
+                  : enrollment.currentStepIndex === i);
               const rowClass = s.completed
                 ? "border-slate-300/70 bg-slate-100/80 text-slate-800 dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-100"
                 : "border-slate-200/80 bg-white text-slate-800 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-100";
@@ -285,17 +399,17 @@ export function OnboardingPlayerPage() {
                 ? "ring-2 ring-brand/50 ring-offset-2 ring-offset-white dark:ring-offset-slate-950"
                 : "";
               const kindSuffix = outlineKindLabel(s.kind);
-              if (reviewList) {
+                if (reviewList) {
                 return (
-                  <li key={s.id}>
+                  <li key={s.id} className="shrink-0 lg:shrink" {...(isReviewActive ? { "data-step-active": "" } : {})}>
                     <button
                       type="button"
                       onClick={() => setReviewStepIndex(i)}
-                      className={`w-full rounded-xl border px-3 py-2.5 text-left text-base shadow-sm transition ${rowClass} ${activeRing}`}
+                      className={`whitespace-nowrap rounded-xl border px-3 py-2 text-sm shadow-sm transition lg:w-full lg:whitespace-normal lg:py-2.5 lg:text-base lg:text-left ${rowClass} ${activeRing}`}
                     >
                       <span className="text-slate-500 dark:text-slate-400">{i + 1}.</span> {s.title}
                       {kindSuffix ? (
-                        <span className="ml-1 text-sm text-slate-500 dark:text-slate-400">{kindSuffix}</span>
+                        <span className="ml-1 text-xs lg:text-sm text-slate-500 dark:text-slate-400">{kindSuffix}</span>
                       ) : null}
                     </button>
                   </li>
@@ -304,11 +418,12 @@ export function OnboardingPlayerPage() {
               return (
                 <li
                   key={s.id}
-                  className={`rounded-xl border px-3 py-2.5 text-base shadow-sm ${rowClass} ${progressRing}`}
+                  {...(isProgressCurrent ? { "data-step-active": "" } : {})}
+                  className={`shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-sm shadow-sm lg:shrink lg:whitespace-normal lg:py-2.5 lg:text-base ${rowClass} ${progressRing}`}
                 >
                   <span className="text-slate-500 dark:text-slate-400">{i + 1}.</span> {s.title}
                   {kindSuffix ? (
-                    <span className="ml-1 text-sm text-slate-500 dark:text-slate-400">{kindSuffix}</span>
+                    <span className="ml-1 text-xs lg:text-sm text-slate-500 dark:text-slate-400">{kindSuffix}</span>
                   ) : null}
                 </li>
               );
@@ -316,213 +431,325 @@ export function OnboardingPlayerPage() {
           </ol>
         </aside>
 
-        <main className="card-surface min-w-0 flex-1 p-6 sm:p-8">
-          {error && error !== "start-first" && (
-            <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">
-              {error}
-            </p>
+        <main className="min-w-0 flex-1 flex flex-col">
+          {/* Tabs — only shown when AI is available */}
+          {aiAvailable && (
+            <div className="flex border-b border-slate-200/80 dark:border-slate-700/80">
+              <button
+                type="button"
+                onClick={() => setActiveTab("ai")}
+                className={`relative px-5 py-3 text-sm font-medium transition ${
+                  activeTab === "ai"
+                    ? "text-brand"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                  </svg>
+                  AI Assistant
+                </span>
+                {activeTab === "ai" && (
+                  <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-brand" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("materials")}
+                className={`relative px-5 py-3 text-sm font-medium transition ${
+                  activeTab === "materials"
+                    ? "text-brand"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                  </svg>
+                  Materials
+                </span>
+                {activeTab === "materials" && (
+                  <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-brand" />
+                )}
+              </button>
+            </div>
           )}
 
-          {completed && reviewList && onReviewSummary && (
-            <div className="rounded-xl border border-emerald-200/90 bg-emerald-50/90 px-4 py-4 dark:border-emerald-900/40 dark:bg-emerald-950/35">
-              <p className="text-lg font-medium text-emerald-950 dark:text-emerald-100">
-                You've completed this onboarding.
-              </p>
-              <p className="mt-1.5 text-base leading-relaxed text-emerald-900/85 dark:text-emerald-200/85">
-                Select a step above to review lessons and quizzes. Content is read-only.
-              </p>
-              {completionSummary && (
-                <div className="mt-6 border-t border-emerald-200/70 pt-6 dark:border-emerald-800/50">
-                  <h3 className="text-base font-semibold text-emerald-950 dark:text-emerald-100">Your results</h3>
-                  <OnboardingResultsStats
-                    completionPercent={completionSummary.completionPercent}
-                    quizSummary={completionSummary.quizSummary}
-                  />
+          {/* AI tab — kept mounted so chat history persists across tab switches */}
+          {aiAvailable && (
+            <div className={`card-surface flex flex-col overflow-hidden -mx-3.5 -mb-4 h-[calc(100svh-14rem)] rounded-none border-x-0 border-b-0 lg:mx-0 lg:mb-0 lg:h-[60vh] lg:max-h-none lg:rounded-2xl lg:border ${activeTab === "ai" ? "" : "hidden"}`}>
+              <OnboardingChat
+                programId={programId}
+                stepTitle={
+                  !completed && currentStep && "title" in currentStep
+                    ? currentStep.title
+                    : undefined
+                }
+                programTitle={program.title}
+                canComplete={!completed && !!currentStep && currentStep.kind === "LESSON"}
+                onCompleteStep={() => void completeCurrent()}
+                stepKind={!completed && currentStep ? currentStep.kind : undefined}
+                quizQuestions={
+                  !completed && currentStep?.kind === "QUIZ"
+                    ? currentStep.questions
+                    : undefined
+                }
+                onQuizSubmitted={() => void load()}
+                programmeCompleted={completed}
+                stepNumber={!completed ? enrollment.currentStepIndex + 1 : undefined}
+                totalSteps={enrollment.totalSteps ?? undefined}
+              />
+            </div>
+          )}
+
+          {/* Materials tab (also the only view when AI is not available) */}
+          {(activeTab === "materials" || !aiAvailable) && (
+            <div className="card-surface min-w-0 flex-1 p-6 sm:p-8 -mx-3.5 -mb-4 rounded-none border-x-0 border-b-0 lg:mx-0 lg:mb-0 lg:rounded-2xl lg:border">
+              {error && error !== "start-first" && (
+                <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">
+                  {error}
+                </p>
+              )}
+
+              {completed && reviewList && onReviewSummary && (
+                <div className="rounded-xl border border-emerald-200/90 bg-emerald-50/90 px-4 py-4 dark:border-emerald-900/40 dark:bg-emerald-950/35">
+                  <p className="text-lg font-medium text-emerald-950 dark:text-emerald-100">
+                    You've completed this onboarding.
+                  </p>
+                  <p className="mt-1.5 text-base leading-relaxed text-emerald-900/85 dark:text-emerald-200/85">
+                    Select a step above to review lessons and quizzes. Content is read-only.
+                  </p>
+                  {completionSummary && (
+                    <div className="mt-6 border-t border-emerald-200/70 pt-6 dark:border-emerald-800/50">
+                      <h3 className="text-base font-semibold text-emerald-950 dark:text-emerald-100">Your results</h3>
+                      <OnboardingResultsStats
+                        completionPercent={completionSummary.completionPercent}
+                        quizSummary={completionSummary.quizSummary}
+                      />
+                    </div>
+                  )}
+                  <div className="mt-8 border-t border-emerald-200/70 pt-6 dark:border-emerald-800/50">
+                    <Link
+                      to="/onboarding"
+                      className="text-sm font-medium text-emerald-900/90 transition hover:text-emerald-700 dark:text-emerald-200 dark:hover:text-emerald-100"
+                    >
+                      ← Back to all programmes
+                    </Link>
+                  </div>
                 </div>
               )}
-              <div className="mt-8 border-t border-emerald-200/70 pt-6 dark:border-emerald-800/50">
-                <Link
-                  to="/onboarding"
-                  className="text-sm font-medium text-emerald-900/90 transition hover:text-emerald-700 dark:text-emerald-200 dark:hover:text-emerald-100"
-                >
-                  ← Back to all programmes
-                </Link>
-              </div>
-            </div>
-          )}
 
-          {completed && activeReviewStep?.kind === "LESSON" && (
-            <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Review (read-only)</p>
-              <h2 className="mt-2 text-2xl font-medium tracking-tight text-slate-800 dark:text-slate-100">
-                {activeReviewStep.title}
-              </h2>
-              <LessonContentView content={activeReviewStep.lessonContent} className="mt-5" />
-              <div className="mt-10 border-t border-slate-200/80 pt-8 dark:border-slate-700">
-                <Link
-                  to="/onboarding"
-                  className="text-sm font-medium text-slate-600 transition hover:text-brand dark:text-slate-300"
-                >
-                  ← Back to all programmes
-                </Link>
-              </div>
-            </div>
-          )}
+              {completed && activeReviewStep?.kind === "LESSON" && (
+                <div>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Review (read-only)</p>
+                  <h2 className="mt-2 text-2xl font-medium tracking-tight text-slate-800 dark:text-slate-100">
+                    {activeReviewStep.title}
+                  </h2>
+                  <LessonContentView content={activeReviewStep.lessonContent} className="mt-5" />
+                  <div className="mt-10 border-t border-slate-200/80 pt-8 dark:border-slate-700">
+                    <Link
+                      to="/onboarding"
+                      className="text-sm font-medium text-slate-600 transition hover:text-brand dark:text-slate-300"
+                    >
+                      ← Back to all programmes
+                    </Link>
+                  </div>
+                </div>
+              )}
 
-          {completed && activeReviewStep?.kind === "QUIZ" && (
-            <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Review (read-only)</p>
-              <h2 className="mt-2 text-2xl font-medium tracking-tight text-slate-800 dark:text-slate-100">
-                {activeReviewStep.title}
-              </h2>
-              <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">Your submitted answers.</p>
-              <div className="mt-6 space-y-8">
-                {activeReviewStep.questions.map((q) => {
-                  const chosen = activeReviewStep.savedAnswers[q.id];
-                  return (
-                    <fieldset key={q.id} className="space-y-3">
-                      <legend className="text-lg font-medium text-slate-800 dark:text-slate-100">
-                        {q.prompt}
-                      </legend>
-                      <div className="space-y-2">
-                        {q.options.map((o) => (
-                          <label
-                            key={o.id}
-                            className="flex cursor-default items-start gap-2 rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 py-2.5 dark:border-slate-600 dark:bg-slate-800/40"
-                          >
-                            <input
-                              type="radio"
-                              name={`review-${q.id}`}
-                              checked={chosen === o.id}
-                              readOnly
-                              disabled
-                              className="mt-1 accent-brand"
-                            />
-                            <span className="text-base text-slate-800 dark:text-slate-100">{o.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                      {!chosen && (
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                          Response was not recorded for this step.
-                        </p>
-                      )}
-                    </fieldset>
-                  );
-                })}
-              </div>
-              <div className="mt-10 border-t border-slate-200/80 pt-8 dark:border-slate-700">
-                <Link
-                  to="/onboarding"
-                  className="text-sm font-medium text-slate-600 transition hover:text-brand dark:text-slate-300"
-                >
-                  ← Back to all programmes
-                </Link>
-              </div>
-            </div>
-          )}
+              {completed && activeReviewStep?.kind === "QUIZ" && (
+                <div>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Review (read-only)</p>
+                  <h2 className="mt-2 text-2xl font-medium tracking-tight text-slate-800 dark:text-slate-100">
+                    {activeReviewStep.title}
+                  </h2>
+                  <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">Your submitted answers.</p>
+                  <div className="mt-6 space-y-8">
+                    {activeReviewStep.questions.map((q) => {
+                      const chosen = activeReviewStep.savedAnswers[q.id];
+                      return (
+                        <fieldset key={q.id} className="space-y-3">
+                          <legend className="text-lg font-medium text-slate-800 dark:text-slate-100">
+                            {q.prompt}
+                          </legend>
+                          <div className="space-y-2">
+                            {q.options.map((o) => (
+                              <label
+                                key={o.id}
+                                className="flex cursor-default items-start gap-2 rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 py-2.5 dark:border-slate-600 dark:bg-slate-800/40"
+                              >
+                                <input
+                                  type="radio"
+                                  name={`review-${q.id}`}
+                                  checked={chosen === o.id}
+                                  readOnly
+                                  disabled
+                                  className="mt-1 accent-brand"
+                                />
+                                <span className="text-base text-slate-800 dark:text-slate-100">{o.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                          {!chosen && (
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              Response was not recorded for this step.
+                            </p>
+                          )}
+                        </fieldset>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-10 border-t border-slate-200/80 pt-8 dark:border-slate-700">
+                    <Link
+                      to="/onboarding"
+                      className="text-sm font-medium text-slate-600 transition hover:text-brand dark:text-slate-300"
+                    >
+                      ← Back to all programmes
+                    </Link>
+                  </div>
+                </div>
+              )}
 
-          {completed && !reviewList && (
-            <div className="text-center">
-              <p className="text-xl font-medium text-slate-800 dark:text-slate-100">
-                You have finished this onboarding.
-              </p>
-              <p className="mt-3 text-lg leading-relaxed text-slate-600 dark:text-slate-300">
-                You can review material any time from the onboarding list.
-              </p>
-              <Link
-                to="/onboarding"
-                className="btn-primary mt-6 inline-flex"
-              >
-                Back to programmes
-              </Link>
-            </div>
-          )}
+              {completed && !reviewList && (
+                <div className="text-center">
+                  <p className="text-xl font-medium text-slate-800 dark:text-slate-100">
+                    You have finished this onboarding.
+                  </p>
+                  <p className="mt-3 text-lg leading-relaxed text-slate-600 dark:text-slate-300">
+                    You can review material any time from the onboarding list.
+                  </p>
+                  <Link
+                    to="/onboarding"
+                    className="btn-primary mt-6 inline-flex"
+                  >
+                    Back to programmes
+                  </Link>
+                </div>
+              )}
 
-          {!completed && currentStep?.kind === "SUMMARY" && (
-            <div>
-              <h2 className="text-2xl font-medium tracking-tight text-slate-800 dark:text-slate-100">
-                Your results
-              </h2>
-              <OnboardingResultsStats
-                completionPercent={currentStep.completionPercent}
-                quizSummary={currentStep.quizSummary}
-              />
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={() => void completeCurrent()}
-                className="btn-primary mt-10"
-              >
-                {submitting ? "Saving…" : "Finish onboarding"}
-              </button>
-            </div>
-          )}
+              {!completed && currentStep?.kind === "SUMMARY" && (
+                <div>
+                  <h2 className="text-2xl font-medium tracking-tight text-slate-800 dark:text-slate-100">
+                    Your results
+                  </h2>
+                  <OnboardingResultsStats
+                    completionPercent={currentStep.completionPercent}
+                    quizSummary={currentStep.quizSummary}
+                  />
+                  <div className="mt-10 flex items-center gap-3">
+                    {canGoBack && (
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => void goBack()}
+                        className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      >
+                        {submitting ? "Going back…" : "Previous step"}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => void completeCurrent()}
+                      className="btn-primary"
+                    >
+                      {submitting ? "Saving…" : "Finish onboarding"}
+                    </button>
+                  </div>
+                </div>
+              )}
 
-          {!completed && currentStep?.kind === "LESSON" && (
-            <div>
-              <h2 className="text-2xl font-medium tracking-tight text-slate-800 dark:text-slate-100">
-                {currentStep.title}
-              </h2>
-              <LessonContentView content={currentStep.lessonContent} className="mt-5" />
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={() => void completeCurrent()}
-                className="btn-primary mt-8"
-              >
-                {submitting ? "Saving…" : "Mark complete and continue"}
-              </button>
-            </div>
-          )}
+              {!completed && currentStep?.kind === "LESSON" && (
+                <div>
+                  <h2 className="text-2xl font-medium tracking-tight text-slate-800 dark:text-slate-100">
+                    {currentStep.title}
+                  </h2>
+                  <LessonContentView content={currentStep.lessonContent} className="mt-5" />
+                  <div className="mt-8 flex items-center gap-3">
+                    {canGoBack && (
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => void goBack()}
+                        className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      >
+                        {submitting ? "Going back…" : "Previous step"}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => void completeCurrent()}
+                      className="btn-primary"
+                    >
+                      {submitting ? "Saving…" : "Mark complete and continue"}
+                    </button>
+                  </div>
+                </div>
+              )}
 
-          {!completed && currentStep?.kind === "QUIZ" && (
-            <div>
-              <h2 className="text-2xl font-medium tracking-tight text-slate-800 dark:text-slate-100">
-                {currentStep.title}
-              </h2>
-              <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">
-                Choose an answer for each question. You can continue even if some are incorrect.
-              </p>
-              <div className="mt-6 space-y-8">
-                {currentStep.questions.map((q) => (
-                  <fieldset key={q.id} className="space-y-3">
-                    <legend className="text-lg font-medium text-slate-800 dark:text-slate-100">
-                      {q.prompt}
-                    </legend>
-                    <div className="space-y-2">
-                      {q.options.map((o) => (
-                        <label
-                          key={o.id}
-                          className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 transition hover:border-brand/30 hover:bg-brand-light/30 dark:border-slate-600 dark:bg-slate-800/60 dark:hover:border-brand/40 dark:hover:bg-brand/10"
-                        >
-                          <input
-                            type="radio"
-                            name={q.id}
-                            checked={quizAnswers[q.id] === o.id}
-                            onChange={() =>
-                              setQuizAnswers((prev) => ({ ...prev, [q.id]: o.id }))
-                            }
-                            className="mt-1 accent-brand"
-                          />
-                          <span className="text-base text-slate-800 dark:text-slate-100">{o.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
-                ))}
-              </div>
-              <button
-                type="button"
-                disabled={
-                  submitting ||
-                  currentStep.questions.some((q) => !quizAnswers[q.id])
-                }
-                onClick={() => void completeCurrent()}
-                className="btn-primary mt-8"
-              >
-                {submitting ? "Checking…" : "Submit answers"}
-              </button>
+              {!completed && currentStep?.kind === "QUIZ" && (
+                <div>
+                  <h2 className="text-2xl font-medium tracking-tight text-slate-800 dark:text-slate-100">
+                    {currentStep.title}
+                  </h2>
+                  <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">
+                    Choose an answer for each question. You can continue even if some are incorrect.
+                  </p>
+                  <div className="mt-6 space-y-8">
+                    {currentStep.questions.map((q) => (
+                      <fieldset key={q.id} className="space-y-3">
+                        <legend className="text-lg font-medium text-slate-800 dark:text-slate-100">
+                          {q.prompt}
+                        </legend>
+                        <div className="space-y-2">
+                          {q.options.map((o) => (
+                            <label
+                              key={o.id}
+                              className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 transition hover:border-brand/30 hover:bg-brand-light/30 dark:border-slate-600 dark:bg-slate-800/60 dark:hover:border-brand/40 dark:hover:bg-brand/10"
+                            >
+                              <input
+                                type="radio"
+                                name={q.id}
+                                checked={quizAnswers[q.id] === o.id}
+                                onChange={() =>
+                                  setQuizAnswers((prev) => ({ ...prev, [q.id]: o.id }))
+                                }
+                                className="mt-1 accent-brand"
+                              />
+                              <span className="text-base text-slate-800 dark:text-slate-100">{o.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                    ))}
+                  </div>
+                  <div className="mt-8 flex items-center gap-3">
+                    {canGoBack && (
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => void goBack()}
+                        className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      >
+                        {submitting ? "Going back…" : "Previous step"}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={
+                        submitting ||
+                        currentStep.questions.some((q) => !quizAnswers[q.id])
+                      }
+                      onClick={() => void completeCurrent()}
+                      className="btn-primary"
+                    >
+                      {submitting ? "Checking…" : "Submit answers"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </main>
