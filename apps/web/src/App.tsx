@@ -2,9 +2,11 @@ import { MsalProvider } from "@azure/msal-react";
 import type { SsoConfigResponse } from "@manifest/shared";
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AdminRoute } from "./components/AdminRoute";
 import { AuthenticatedLayout } from "./components/AuthenticatedLayout";
+import { DefaultEntryRedirect } from "./components/DefaultEntryRedirect";
+import { OAuthRedirectToCallback } from "./components/OAuthRedirectToCallback";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { AuthProvider } from "./context/AuthContext";
 import { SsoProvider } from "./context/SsoContext";
@@ -75,6 +77,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AppShell>
+        <OAuthRedirectToCallback />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
@@ -92,8 +95,8 @@ export default function App() {
               </Route>
             </Route>
           </Route>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<DefaultEntryRedirect />} />
+          <Route path="*" element={<DefaultEntryRedirect />} />
         </Routes>
       </AppShell>
     </BrowserRouter>

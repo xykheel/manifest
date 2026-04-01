@@ -42,6 +42,8 @@ export function CompletionsAreaChart({
       : "";
 
   const gridYs = [0, 0.25, 0.5, 0.75, 1].map((t) => padT + innerH * (1 - t));
+  /** When maxY is 1, ceil(maxY/2) and maxY are both 1 — dedupe so keys and labels stay unique. */
+  const yAxisTicks = Array.from(new Set([0, Math.ceil(maxY / 2), maxY]));
 
   return (
     <div className="relative w-full">
@@ -57,9 +59,9 @@ export function CompletionsAreaChart({
             <stop offset="100%" stopColor="#00A3AD" stopOpacity={0.02} />
           </linearGradient>
         </defs>
-        {gridYs.map((gy) => (
+        {gridYs.map((gy, i) => (
           <line
-            key={gy}
+            key={`grid-${i}-${gy.toFixed(2)}`}
             x1={padL}
             y1={gy}
             x2={w - padR}
@@ -103,10 +105,10 @@ export function CompletionsAreaChart({
             {p.label}
           </text>
         ))}
-        {[...new Set([0, Math.ceil(maxY / 2), maxY])].map((tick) => {
+        {yAxisTicks.map((tick, i) => {
           const gy = padT + innerH - (tick / maxY) * innerH;
           return (
-            <text key={tick} x={4} y={gy + 4} className="fill-current text-[10px]">
+            <text key={`y-tick-${i}-${tick}`} x={4} y={gy + 4} className="fill-current text-[10px]">
               {tick}
             </text>
           );

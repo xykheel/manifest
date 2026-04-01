@@ -224,8 +224,9 @@ Put Entra variables in **`apps/api/.env`** (not only the web app), then **restar
 
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/api/auth/session` | `{ hasRefreshCookie }` — whether the httpOnly refresh cookie is present (no JWT check). The SPA uses this to avoid calling `POST /api/auth/refresh` when there is no cookie (so you do not see a spurious 401 on first visit). |
 | POST | `/api/auth/login` | Email/password; sets refresh cookie; returns `{ accessToken }`. |
-| POST | `/api/auth/refresh` | Refresh cookie → `{ accessToken }`. |
+| POST | `/api/auth/refresh` | Valid refresh cookie → `{ accessToken }`. **401** if the cookie is missing, invalid/expired, or the user no longer exists. |
 | POST | `/api/auth/logout` | Clears refresh cookie. |
 | GET | `/api/auth/sso/config` | `{ ssoEnabled, tenantId?, clientId? }`. |
 | POST | `/api/auth/sso/callback` | Body: `{ idToken }` (SPA) or `{ code, redirectUri }` (confidential client). |
