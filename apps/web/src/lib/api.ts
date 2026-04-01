@@ -5,8 +5,9 @@ import { tokenStore } from "./tokenStore";
 
 /**
  * Dev: empty string → requests stay on the Vite origin; `vite.config` proxies `/api` to the backend so
- * refresh cookies are first-party (required for browsers that treat localhost:5173→3001 as cross-site).
- * Prod: set `VITE_API_URL` if the API is on another origin; omit or leave empty if nginx (or similar) serves `/api` on the same host.
+ * the httpOnly refresh cookie (`refresh_token`) is set for the app origin (e.g. localhost:5173), not
+ * for the API port — check Cookies for the URL in the address bar, not Local/Session Storage.
+ * Prod: set `VITE_API_URL` if the API is on another origin; omit or leave empty if nginx serves `/api` on the same host.
  */
 const baseURL = import.meta.env.DEV
   ? ""
