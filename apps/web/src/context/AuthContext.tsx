@@ -1,18 +1,27 @@
-import type { JwtAccessPayload, MeUser } from "@manifest/shared";
+import type { AuthSessionResponse, JwtAccessPayload, MeUser } from "@manifest/shared";
 import axios from "axios";
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type Dispatch,
   type SetStateAction,
 } from "react";
+import { flushSync } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { api, baseURL, setAuthFailureHandler } from "../lib/api";
-import { decodeAccessToken } from "../lib/jwt";
+import {
+  api,
+  baseURL,
+  clearPostAuthGrace,
+  getMeWithToken,
+  notifySessionEstablished,
+  setAuthFailureHandler,
+} from "../lib/api";
+import { decodeAccessToken, isAccessTokenValid } from "../lib/jwt";
 import { tokenStore } from "../lib/tokenStore";
 
 function meFromJwt(jwt: JwtAccessPayload, departments: MeUser["departments"] = []): MeUser {
@@ -30,9 +39,11 @@ function meFromJwt(jwt: JwtAccessPayload, departments: MeUser["departments"] = [
 }
 
 async function fetchMeIntoSetter(setUser: Dispatch<SetStateAction<MeUser | null>>) {
+  const token = tokenStore.get();
+  if (!token) return;
   try {
-    const { data } = await api.get<{ user: MeUser }>("/api/me");
-    setUser(data.user);
+    const { user } = await getMeWithToken(token);
+    setUser(user);
   } catch {
     /* keep JWT-derived user; departments may stay empty */
   }
@@ -47,6 +58,8 @@ type AuthContextValue = {
   user: MeUser | null;
   isAuthenticated: boolean;
   setSession: (accessToken: string) => void;
+  /** Sets access token, then awaits GET /api/me so the session is fully established before callers navigate. Use for SSO callback. */
+  establishSession: (accessToken: string) => Promise<void>;
   logout: (options?: LogoutOptions) => Promise<void>;
   hydrationDone: boolean;
 };
@@ -60,12 +73,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const setSession = useCallback((accessToken: string) => {
     tokenStore.set(accessToken);
+    notifySessionEstablished();
     const decoded = decodeAccessToken(accessToken);
     setUser(meFromJwt(decoded, []));
     void fetchMeIntoSetter(setUser);
   }, []);
 
+  const establishSession = useCallback(async (accessToken: string): Promise<void> => {
+    flushSync(() => {
+      tokenStore.set(accessToken);
+      const decoded = decodeAccessToken(accessToken);
+      setUser(meFromJwt(decoded, []));
+    });
+    notifySessionEstablished();
+    try {
+      const { user } = await getMeWithToken(accessToken);
+      flushSync(() => {
+        setUser(user);
+      });
+    } catch {
+      /* keep JWT-derived user; departments may stay empty */
+    }
+  }, []);
+
   const logout = useCallback(async (options?: LogoutOptions) => {
+    clearPostAuthGrace();
     try {
       await api.post("/api/auth/logout");
     } catch {
@@ -84,12 +116,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setAuthFailureHandler(() => {
+      clearPostAuthGrace();
       tokenStore.set(null);
       setUser(null);
       navigate("/login", { replace: true });
     });
     return () => setAuthFailureHandler(null);
   }, [navigate]);
+
+  /** Reconcile React state when tokenStore has a valid JWT but user is null (SSO vs hydration / Strict Mode). */
+  useLayoutEffect(() => {
+    if (user) return;
+    const t = tokenStore.get();
+    if (!t || !isAccessTokenValid(t)) return;
+    try {
+      setUser(meFromJwt(decodeAccessToken(t), []));
+      void fetchMeIntoSetter(setUser);
+    } catch {
+      tokenStore.set(null);
+    }
+  }, [user]);
 
   useEffect(() => {
     void (async () => {
@@ -107,12 +153,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       try {
+        let session: AuthSessionResponse | null = null;
+        const pauseBeforeRetryMs = [120, 160, 170, 250] as const;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          if (attempt > 0) {
+            await new Promise((r) => setTimeout(r, pauseBeforeRetryMs[attempt - 1]!));
+          }
+          const { data } = await axios.get<AuthSessionResponse>(`${baseURL}/api/auth/session`, {
+            withCredentials: true,
+          });
+          session = data;
+          if (data.hasRefreshCookie) break;
+        }
+        if (!session?.hasRefreshCookie) {
+          return;
+        }
         const { data } = await axios.post<{ accessToken: string }>(
           `${baseURL}/api/auth/refresh`,
           {},
           { withCredentials: true },
         );
         tokenStore.set(data.accessToken);
+        notifySessionEstablished();
         const decoded = decodeAccessToken(data.accessToken);
         setUser(meFromJwt(decoded, []));
         void fetchMeIntoSetter(setUser);
@@ -134,10 +196,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isAuthenticated: Boolean(user),
       setSession,
+      establishSession,
       logout,
       hydrationDone,
     }),
-    [user, setSession, logout, hydrationDone],
+    [user, setSession, establishSession, logout, hydrationDone],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

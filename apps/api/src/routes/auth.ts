@@ -8,6 +8,7 @@ import {
   fetchProfileFromIdTokenClaims,
   verifyEntraIdToken,
 } from "../lib/entra";
+import type { AuthSessionResponse } from "@manifest/shared";
 import { accessTokenPayloadFromUser } from "../lib/accessTokenFromUser";
 import { env } from "../lib/env";
 import { prisma } from "../lib/prisma";
@@ -93,6 +94,12 @@ router.post("/login", async (req, res) => {
   const refreshToken = signRefreshToken(user.id);
   setRefreshCookie(res, refreshToken);
   res.json({ accessToken });
+});
+
+/** Lets the SPA skip POST /api/auth/refresh when no cookie exists (avoids noisy 401 on first load). */
+router.get("/session", (req, res) => {
+  const hasRefreshCookie = Boolean(req.cookies?.[REFRESH_COOKIE_NAME]);
+  res.json({ hasRefreshCookie } satisfies AuthSessionResponse);
 });
 
 router.post("/refresh", async (req, res) => {

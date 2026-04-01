@@ -30,6 +30,11 @@ export interface SsoConfigResponse {
   clientId?: string;
 }
 
+/** GET /api/auth/session — whether an httpOnly refresh cookie is present (no JWT verification). */
+export interface AuthSessionResponse {
+  hasRefreshCookie: boolean;
+}
+
 export const REFRESH_COOKIE_NAME = "refresh_token";
 
 /** Full account payload from GET /api/me (JWT fields plus server data). */

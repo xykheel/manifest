@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useSso } from "../context/SsoContext";
+import { ensureMsalInitialized } from "../lib/msal";
 
 function emailInitials(email: string): string {
   const local = email.split("@")[0] ?? "?";
@@ -41,13 +42,13 @@ function EntraLogoutButton({
   async function onLogout() {
     await logout({ skipNavigate: true });
     try {
+      await ensureMsalInitialized(instance);
       await instance.logoutRedirect({
         postLogoutRedirectUri: `${window.location.origin}/login`,
       });
     } catch {
-      for (const account of instance.getAllAccounts()) {
-        instance.removeAccount(account);
-      }
+      await ensureMsalInitialized(instance);
+      await instance.clearCache();
       window.location.assign(`${window.location.origin}/login`);
     }
   }
